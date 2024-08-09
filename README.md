@@ -8,7 +8,7 @@ Fast and minimal json parser written with and for go
 package main
 
 import (
-    "github.com/xnacly/gojson" gojson
+    "github.com/xnacly/gojson"
 )
 
 func main() {
@@ -37,6 +37,6 @@ func main() {
   404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf)
   and [rfc8259](https://www.rfc-editor.org/rfc/rfc8259) compliant
   - missing some specific edge cases :^)
-- no reflection, custom query language similar to javascript object access
+- no reflection a custom query language similar to javascript object access instead
 - generics for value insertion and extraction with `gojson.Get` and `gojson.Set`
 - caching of queries with `gojson.Compile`
