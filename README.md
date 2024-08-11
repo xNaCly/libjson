@@ -16,11 +16,11 @@ func main() {
     jsonObj := gojson.New(jsonObj) // or gojson.NewReader(r io.Reader)
 
     // accessing values
-    fmt.Println(gojson.Get(jsonObj, "hello.world[0]")) // hi
+    fmt.Println(gojson.Get(jsonObj, "hello.world.0")) // hi
 
     // updating values
-    gojson.Set(jsonObj, "hello.world[0]", "heyho")
-    fmt.Println(gojson.Get(jsonObj, "hello.world[0]")) // heyho
+    gojson.Set(jsonObj, "hello.world.0", "heyho")
+    fmt.Println(gojson.Get(jsonObj, "hello.world.0")) // heyho
     gojson.Set(jsonObj, "hello.world", []string{"hi", "heyho"})
     fmt.Println(jsonObj.Get(jsonObj, "hello.world")) // []string{"hi", "heyho"}
 
