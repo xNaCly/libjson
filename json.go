@@ -5,14 +5,8 @@ import (
 	"strings"
 )
 
-func todo() {
-	panic("todo")
-}
-
 func NewReader(r io.Reader) (*JSON, error) {
-	l := lexer{}
-	l.init(r)
-	toks, err := l.lex()
+	toks, err := (&lexer{}).lex(r)
 	obj, err := parse(toks)
 	if err != nil {
 		return nil, err

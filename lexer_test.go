@@ -5,11 +5,33 @@ import (
 	"testing"
 )
 
+func validToks(t *testing.T, expected []t_json, got []token) {
+	if len(expected) != len(got) {
+		t.Errorf("Lengths of 'expected' (%d) and 'got' (%d) do not match\n", len(expected), len(got))
+	}
+
+	for i, e := range expected {
+		if e != got[i].Type {
+			t.Errorf("Expected %#+v at %d, got %#+v", e, i, got[i])
+		}
+	}
+}
+
+func TestLexerWhitespace(t *testing.T) {
+	json := ""
+	l := lexer{}
+	toks, err := l.lex(strings.NewReader(json))
+	if err != nil {
+		t.Error(err)
+	}
+	tList := []t_json{}
+	validToks(t, tList, toks)
+}
+
 func TestLexerStructure(t *testing.T) {
 	json := "{}[],:"
 	l := lexer{}
-	l.init(strings.NewReader(json))
-	toks, err := l.lex()
+	toks, err := l.lex(strings.NewReader(json))
 	if err != nil {
 		t.Error(err)
 	}
@@ -21,16 +43,13 @@ func TestLexerStructure(t *testing.T) {
 		t_comma,
 		t_colon,
 	}
-	if len(toks) == 0 || len(toks) != len(tList) {
-		t.Error("Not enough tokens, something went wrong")
-	}
+	validToks(t, tList, toks)
 }
 
 func TestLexerAtoms(t *testing.T) {
 	json := `"string" 12345 true false null`
 	l := lexer{}
-	l.init(strings.NewReader(json))
-	toks, err := l.lex()
+	toks, err := l.lex(strings.NewReader(json))
 	if err != nil {
 		t.Error(err)
 	}
@@ -41,13 +60,11 @@ func TestLexerAtoms(t *testing.T) {
 		t_false,
 		t_null,
 	}
-	if len(toks) == 0 || len(toks) != len(tList) {
-		t.Error("Not enough tokens, something went wrong")
-	}
+	validToks(t, tList, toks)
 }
 
 func TestLexer(t *testing.T) {
-	everythingJSON := `
+	json := `
     {
         "key": "value",
         "arrayOfDataTypes": ["string", 1234, true, false, null],
@@ -55,8 +72,7 @@ func TestLexer(t *testing.T) {
     }
     `
 	l := lexer{}
-	l.init(strings.NewReader(everythingJSON))
-	toks, err := l.lex()
+	toks, err := l.lex(strings.NewReader(json))
 	if err != nil {
 		t.Error(err)
 	}
