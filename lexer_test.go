@@ -1,4 +1,4 @@
-package gojson
+package libjson
 
 import (
 	"strings"

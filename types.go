@@ -1,4 +1,4 @@
-package gojson
+package libjson
 
 // json type
 type t_json uint8
