@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"strings"
 )
 
 type lexer struct {
@@ -51,6 +52,20 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 			tt = t_comma
 		case ':':
 			tt = t_colon
+		case '"':
+			buf := strings.Builder{}
+			for {
+				cc, ok = l.advance()
+				if !ok || cc == '"' {
+					break
+				}
+				buf.WriteRune(cc)
+			}
+			if cc != '"' {
+				return nil, errors.New("Unterminated string detected")
+			}
+			toks = append(toks, token{Type: t_string, Val: buf.String()})
+			continue
 		case 't': // this should always be the 'true' atom and is therefore optimised here
 			if r, ok := l.advanceInt(3); ok && (r[0] == 'r' && r[1] == 'u' && r[2] == 'e') {
 				tt = t_true
@@ -69,8 +84,6 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 			} else {
 				return nil, errors.New("Failed to read the expected 'null' atom")
 			}
-
-			//  TODO: numbers, strings
 		}
 
 		toks = append(toks, token{Type: tt})
