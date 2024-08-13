@@ -37,7 +37,7 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 		tt := t_unkown
 
 		switch cc {
-		case ' ', '\n', '\t':
+		case ' ', '\n', '\t', '\r':
 			continue
 		case '{':
 			tt = t_left_curly
