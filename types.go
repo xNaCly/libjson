@@ -20,7 +20,7 @@ const (
 
 type token struct {
 	Type t_json
-	Val  any // only populated for number and string (can be number or string, depends on .Type)
+	Val  any // only populated for number and string (can be float64 or string, depends on .Type)
 }
 
 type Node interface {

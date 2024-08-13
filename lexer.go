@@ -3,7 +3,9 @@ package libjson
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -83,6 +85,28 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 				tt = t_null
 			} else {
 				return nil, errors.New("Failed to read the expected 'null' atom")
+			}
+		default:
+			if cc == '-' || (cc >= '0' && cc <= '9') {
+				buf := strings.Builder{}
+				for (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
+					buf.WriteRune(cc)
+					cc, ok = l.advance()
+					if !ok {
+						break
+					}
+				}
+				if number, err := strconv.ParseFloat(buf.String(), 64); err == nil {
+					toks = append(toks, token{Type: t_number, Val: number})
+					// the read at the start of the for loop iterates us too
+					// far, thus we skip that here
+					l.r.UnreadRune()
+					continue
+				} else {
+					return nil, fmt.Errorf("Failed to parse %q: %w", buf.String(), err)
+				}
+			} else {
+				return nil, fmt.Errorf("Unknown character %q at this position.", cc)
 			}
 		}
 
