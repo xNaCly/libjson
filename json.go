@@ -7,7 +7,8 @@ import (
 
 func NewReader(r io.Reader) (*JSON, error) {
 	toks, err := (&lexer{}).lex(r)
-	obj, err := parse(toks)
+	p := parser{toks, 0}
+	obj, err := p.parse()
 	if err != nil {
 		return nil, err
 	}

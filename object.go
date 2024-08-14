@@ -44,7 +44,7 @@ func Compile[T any](obj *JSON, path string) (func() (T, error), error) {
 }
 
 type JSON struct {
-	obj map[string]any
+	obj any
 }
 
 func (j *JSON) get(path string) (any, error) {
@@ -56,6 +56,7 @@ func (j *JSON) set(path string, value any) error {
 }
 
 func (j *JSON) MarshalJSON() ([]byte, error) {
+	// TODO: this needs work
 	return json.Marshal(j.obj)
 }
 
