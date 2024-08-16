@@ -3,35 +3,16 @@ package libjson
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
-
-func validToks(t *testing.T, expected []token, got []token) {
-	if len(expected) != len(got) {
-		t.Errorf("Lengths of 'expected' (%d) and 'got' (%d) do not match\n", len(expected), len(got))
-	}
-
-	for i, e := range expected {
-		if e.Type != got[i].Type {
-			t.Errorf("Expected %#+v at %d, got %#+v", e, i, got[i])
-		}
-		if e.Type == t_number && e.Val.(float64) != got[i].Val.(float64) {
-			t.Errorf("Expected %#+v at %d, got %#+v", e, i, got[i])
-		}
-		if e.Type == t_string && e.Val.(string) != got[i].Val.(string) {
-			t.Errorf("Expected %#+v at %d, got %#+v", e, i, got[i])
-		}
-	}
-}
 
 func TestLexerWhitespace(t *testing.T) {
 	json := "\n\r\t      "
 	l := lexer{}
 	toks, err := l.lex(strings.NewReader(json))
-	if err != nil {
-		t.Error(err)
-	}
-	tList := []token{}
-	validToks(t, tList, toks)
+	assert.Error(t, err)
+	assert.Empty(t, toks)
 }
 
 func TestLexerStructure(t *testing.T) {
@@ -49,7 +30,7 @@ func TestLexerStructure(t *testing.T) {
 		{Type: t_comma},
 		{Type: t_colon},
 	}
-	validToks(t, tList, toks)
+	assert.EqualValues(t, tList, toks)
 }
 
 func TestLexerAtoms(t *testing.T) {
@@ -80,7 +61,7 @@ func TestLexerAtoms(t *testing.T) {
 		{Type: t_number, Val: -1.4e+5},
 		{Type: t_number, Val: -129.1928e-19028},
 	}
-	validToks(t, tList, toks)
+	assert.EqualValues(t, tList, toks)
 }
 
 func TestLexer(t *testing.T) {
@@ -131,5 +112,27 @@ func TestLexer(t *testing.T) {
 		{Type: t_right_curly},
 	}
 
-	validToks(t, tList, toks)
+	assert.EqualValues(t, tList, toks)
+}
+
+func TestLexerFail(t *testing.T) {
+	input := []string{
+		"",
+		`"`,
+		"'",
+		`0xFF`,
+		string([]byte{0x0C}),
+		"1.0e+",
+		"0E",
+		"1eE2",
+		`{"test": 'value'}`,
+	}
+	for _, in := range input {
+		t.Run(in, func(t *testing.T) {
+			l := &lexer{}
+			toks, err := l.lex(strings.NewReader(in))
+			assert.Error(t, err)
+			assert.Empty(t, toks)
+		})
+	}
 }
