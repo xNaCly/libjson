@@ -37,7 +37,7 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 			break
 		}
 
-		tt := t_unkown
+		tt := t_eof
 
 		switch cc {
 		case ' ', '\n', '\t', '\r':
@@ -103,14 +103,18 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 					l.r.UnreadRune()
 					continue
 				} else {
-					return nil, fmt.Errorf("Failed to parse %q: %w", buf.String(), err)
+					return nil, fmt.Errorf("Invalid floating point number %q: %w", buf.String(), err)
 				}
 			} else {
-				return nil, fmt.Errorf("Unknown character %q at this position.", cc)
+				return nil, fmt.Errorf("Unexpected character %q at this position.", cc)
 			}
 		}
 
 		toks = append(toks, token{Type: tt})
 	}
+	if len(toks) == 0 {
+		return nil, errors.New("Unexpected end of JSON input")
+	}
+
 	return toks, nil
 }

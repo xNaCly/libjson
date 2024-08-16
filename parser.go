@@ -1,7 +1,6 @@
 package libjson
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -15,39 +14,32 @@ func (p *parser) atEnd() bool {
 }
 
 func (p *parser) cur() token {
-	return p.toks[p.pos]
-}
-
-func (p *parser) next() (token, bool) {
-	if p.pos+1 >= len(p.toks) {
-		return token{}, false
+	if !p.atEnd() {
+		return p.toks[p.pos]
 	}
-	return p.toks[p.pos+1], true
+	return token{Type: t_eof}
 }
 
-func (p *parser) expect(t t_json) error {
-	if p.cur().Type != t {
-		return fmt.Errorf("Wanted %q, got %q", tokennames[t], tokennames[p.toks[p.pos].Type])
+func (p *parser) expect(t t_json) (token, error) {
+	tok := p.cur()
+	if tok.Type != t {
+		return token{Type: t_eof}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[tok.Type], tokennames[t])
 	}
 	p.pos++
-	return nil
+	return tok, nil
 }
 
 // parses toks into a valid json representation, thus the return type can be
 // either map[string]any, []any, string, nil, false, true or a number
 func (p *parser) parse() (any, error) {
-	r := []any{}
-	for p.pos < len(p.toks) {
-		if val, err := p.expression(); err != nil {
-			return nil, err
-		} else {
-			r = append(r, val)
+	if val, err := p.expression(); err != nil {
+		return nil, err
+	} else {
+		if !p.atEnd() {
+			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data of type ", tokennames[p.cur().Type])
 		}
+		return val, nil
 	}
-	if len(r) == 1 {
-		return r[0], nil
-	}
-	return r, nil
 }
 
 func (p *parser) expression() (any, error) {
@@ -62,23 +54,72 @@ func (p *parser) expression() (any, error) {
 }
 
 func (p *parser) object() (map[string]any, error) {
-	return nil, errors.ErrUnsupported
-}
-
-func (p *parser) array() ([]any, error) {
-	err := p.expect(t_left_braket)
+	_, err := p.expect(t_left_curly)
 	if err != nil {
 		return nil, err
 	}
-	a := make([]any, 0)
+
+	m := map[string]any{}
+
+	if p.cur().Type == t_right_curly {
+		p.pos++
+		return m, nil
+	}
+
+	for !p.atEnd() && p.cur().Type != t_right_curly {
+		if len(m) > 0 {
+			_, err := p.expect(t_comma)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		key, err := p.expect(t_string)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = p.expect(t_colon)
+		if err != nil {
+			return nil, err
+		}
+
+		val, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+
+		keyStr := key.Val.(string)
+		// TODO:  think about making uniqueness check for object keys configurable
+		if _, ok := m[keyStr]; ok {
+			return nil, fmt.Errorf("Key %q is already set in this object", keyStr)
+		}
+		m[keyStr] = val
+	}
+
+	_, err = p.expect(t_right_curly)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (p *parser) array() ([]any, error) {
+	_, err := p.expect(t_left_braket)
+	if err != nil {
+		return nil, err
+	}
 	if p.cur().Type == t_right_braket {
 		p.pos++
-		return a, nil
+		return []any{}, nil
 	}
+
+	a := make([]any, 0, 16)
 
 	for !p.atEnd() && p.cur().Type != t_right_braket {
 		if len(a) > 0 {
-			err := p.expect(t_comma)
+			_, err := p.expect(t_comma)
 			if err != nil {
 				return nil, err
 			}
@@ -90,7 +131,7 @@ func (p *parser) array() ([]any, error) {
 		a = append(a, node)
 	}
 
-	err = p.expect(t_right_braket)
+	_, err = p.expect(t_right_braket)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +151,7 @@ func (p *parser) atom() (any, error) {
 	case t_null:
 		val = nil
 	default:
-		return nil, fmt.Errorf("Unknown atom %q at this position", tokennames[cc.Type])
+		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[cc.Type])
 	}
 
 	p.pos++

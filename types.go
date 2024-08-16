@@ -15,7 +15,7 @@ const (
 	t_right_braket               // ]
 	t_comma                      // ,
 	t_colon                      // :
-	t_unkown                     // for any non structure characters outside of strings and numbers
+	t_eof                        // for any non structure characters outside of strings and numbers
 )
 
 var tokennames = map[t_json]string{
@@ -24,13 +24,13 @@ var tokennames = map[t_json]string{
 	t_true:         "true",
 	t_false:        "false",
 	t_null:         "null",
-	t_left_curly:   "left_curly",
-	t_right_curly:  "right_curly",
-	t_left_braket:  "left_braket",
-	t_right_braket: "right_braket",
-	t_comma:        "comma",
-	t_colon:        "colon",
-	t_unkown:       "unkown",
+	t_left_curly:   "{",
+	t_right_curly:  "}",
+	t_left_braket:  "[",
+	t_right_braket: "]",
+	t_comma:        ",",
+	t_colon:        ":",
+	t_eof:          "EOF",
 }
 
 type token struct {
