@@ -50,10 +50,10 @@ func main() {
 
 | JSON size | `encoding/json` | `libjson`  |
 | --------- | --------------- | ---------- |
-| 64KB      | 650.457µs       | 695.546µs  |
-| 128KB     | 2.689076ms      | 2.964479ms |
-| 256KB     | 2.777847ms      | 3.077609ms |
-| 512KB     | 5.190729ms      | 6.991226ms |
+| 64KB      | 684.496µs       | 695.496µs  |
+| 128KB     | 2.819917ms      | 2.886488ms |
+| 256KB     | 2.752296ms      | 2.857768ms |
+| 512KB     | 5.387102ms      | 6.821366ms |
 
 These results were generated with the following specs:
 
@@ -84,14 +84,13 @@ Output looks something like:
 
 ```text
 fetching example data
-[libjson] building executable
-[libjson] 64KB: 695.546µs
-[libjson] 128KB: 2.964479ms
-[libjson] 256KB: 3.077609ms
-[libjson] 512KB: 6.991226ms
-[gojson] building executable
-[gojson] 64KB: 650.457µs
-[gojson] 128KB: 2.689076ms
-[gojson] 256KB: 2.777847ms
-[gojson] 512KB: 5.190729ms
+building executable
+[libjson] 64KB: 695.496µs
+[libjson] 128KB: 2.886488ms
+[libjson] 256KB: 2.857768ms
+[libjson] 512KB: 6.821366ms
+[gojson] 64KB: 684.496µs
+[gojson] 128KB: 2.819917ms
+[gojson] 256KB: 2.752296ms
+[gojson] 512KB: 5.387102ms
 ```

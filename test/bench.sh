@@ -6,26 +6,23 @@ curl -C https://microsoftedge.github.io/Demos/json-dummy-data/256KB.json -o 256K
 curl -C https://microsoftedge.github.io/Demos/json-dummy-data/512KB.json -o 512KB.json 2>> /dev/null
 # curl https://microsoftedge.github.io/Demos/json-dummy-data/1MB.json -o 1MB.json 2>> /dev/null
 
-echo "[libjson] building executable"
-go build libjson.go
+echo "building executable"
+go build test.go
 
 echo -n "[libjson] 64KB: "
-./libjson ./64KB.json
+./test ./64KB.json
 echo -n "[libjson] 128KB: "
-./libjson ./128KB.json
+./test ./128KB.json
 echo -n "[libjson] 256KB: "
-./libjson ./256KB.json
+./test ./256KB.json
 echo -n "[libjson] 512KB: "
-./libjson ./512KB.json
-
-echo "[gojson] building executable"
-go build gojson.go
+./test ./512KB.json
 
 echo -n "[gojson] 64KB: "
-./gojson ./64KB.json
+./test -libjson=false ./64KB.json
 echo -n "[gojson] 128KB: "
-./gojson ./128KB.json
+./test -libjson=false ./128KB.json
 echo -n "[gojson] 256KB: "
-./gojson ./256KB.json
+./test -libjson=false ./256KB.json
 echo -n "[gojson] 512KB: "
-./gojson ./512KB.json
+./test -libjson=false ./512KB.json

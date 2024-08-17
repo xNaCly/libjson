@@ -1,3 +1,2 @@
 test/*.json
-test/libjson
-test/gojson
+test/test
