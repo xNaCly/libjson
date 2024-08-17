@@ -48,13 +48,6 @@ func main() {
 
 ## Benchmarks
 
-| JSON size | `encoding/json` | `libjson`  |
-| --------- | --------------- | ---------- |
-| 64KB      | 684.496µs       | 695.496µs  |
-| 128KB     | 2.819917ms      | 2.886488ms |
-| 256KB     | 2.752296ms      | 2.857768ms |
-| 512KB     | 5.387102ms      | 6.821366ms |
-
 These results were generated with the following specs:
 
 ```text
@@ -64,11 +57,41 @@ Memory: 32024MiB
 Go version: 1.23
 ```
 
+Below this section is a list of performance improvements and their impact on
+the overall performance as well as the full results of
+[test/bench.sh](test/bench.sh).
+
+### Latest
+
+| JSON size | `encoding/json` | `libjson`   |
+| --------- | --------------- | ----------- |
+| 64KB      | 670.796µs       | 692.776µs   |
+| 128KB     | 2.700935ms      | 2.853186ms  |
+| 256KB     | 2.734796ms      | 2.880656ms  |
+| 512KB     | 5.492051ms      | 7.215417ms  |
+| 1MB       | 10.85996ms      | 15.531744ms |
+| 5MB       | 52.169431ms     | 77.415754ms |
+
 For the first naiive implementation, these results are fairly good and not too
 far behind the `encoding/go` implementation, however there are some potential
 low hanging fruit for performance improvements and I will invest some time into
-them, below this section I will keep a list of performance improvements and
-their impact on the overall performance.
+them.
+
+No specific optimisations made here, except removing the check for duplicate
+object keys, because
+[rfc8259](https://www.rfc-editor.org/rfc/rfc8259) says:
+
+> When the names within an object are not
+> unique, the behavior of software that receives such an object is
+> unpredictable. Many implementations report the last name/value pair only.
+> Other implementations report an error or fail to parse the object, and some
+> implementations report all of the name/value pairs, including duplicates.
+
+Thus I can decide wheter or not I want to error on duplicate keys, or simply
+let each duplicate key overwrite the previous value in the object, however
+checking if a given key is already in the map/object requires that key to be
+hashed and the map to be indexed with that key, omitting this check saves us
+these operations, thus making the parser faster for large objects.
 
 ### Reproduce locally
 
@@ -85,12 +108,16 @@ Output looks something like:
 ```text
 fetching example data
 building executable
-[libjson] 64KB: 695.496µs
-[libjson] 128KB: 2.886488ms
-[libjson] 256KB: 2.857768ms
-[libjson] 512KB: 6.821366ms
-[gojson] 64KB: 684.496µs
-[gojson] 128KB: 2.819917ms
-[gojson] 256KB: 2.752296ms
-[gojson] 512KB: 5.387102ms
+[libjson] 64KB: 692.776µs
+[libjson] 128KB: 2.853186ms
+[libjson] 256KB: 2.880656ms
+[libjson] 512KB: 7.215417ms
+[libjson] 1MB: 15.531744ms
+[libjson] 5MB: 77.415754ms
+[gojson] 64KB: 670.796µs
+[gojson] 128KB: 2.700935ms
+[gojson] 256KB: 2.734796ms
+[gojson] 512KB: 5.492051ms
+[gojson] 1MB: 10.85996ms
+[gojson] 5MB: 52.169431ms
 ```
