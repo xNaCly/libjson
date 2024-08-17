@@ -1,6 +1,7 @@
 package libjson
 
 import (
+	"bufio"
 	"strings"
 	"testing"
 
@@ -24,10 +25,7 @@ func TestParserAtoms(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			l := &lexer{}
-			toks, err := l.lex(strings.NewReader(in))
-			assert.NoError(t, err)
-			p := &parser{toks, 0}
+			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -50,10 +48,7 @@ func TestParserArray(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			l := &lexer{}
-			toks, err := l.lex(strings.NewReader(in))
-			assert.NoError(t, err)
-			p := &parser{toks, 0}
+			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -80,10 +75,7 @@ func TestParserObject(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			l := &lexer{}
-			toks, err := l.lex(strings.NewReader(in))
-			assert.NoError(t, err)
-			p := &parser{toks, 0}
+			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -110,10 +102,7 @@ func TestParserEdge(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			l := &lexer{}
-			toks, err := l.lex(strings.NewReader(in))
-			assert.NoError(t, err)
-			p := &parser{toks, 0}
+			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -138,16 +127,13 @@ func TestParserFail(t *testing.T) {
 		"[1,]",
 		`{ "obj": {}, }`,
 		`{ "obj": [, }`,
-		`{ "key": 1, "key": 2 }`,
+		// `{ "key": 1, "key": 2 }`, errors for duplicate keys was disabled, see parser.object()
 		`{:"b"}`,
 		`{"x"::"b"}`,
 	}
 	for _, in := range input {
 		t.Run(in, func(t *testing.T) {
-			l := &lexer{}
-			toks, err := l.lex(strings.NewReader(in))
-			assert.NoError(t, err)
-			p := &parser{toks, 0}
+			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
 			out, err := p.parse()
 			assert.Error(t, err)
 			assert.Nil(t, out)

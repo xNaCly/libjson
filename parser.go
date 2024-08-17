@@ -1,23 +1,31 @@
 package libjson
 
 import (
+	"errors"
 	"fmt"
+	"io"
 )
 
 type parser struct {
-	toks []token
-	pos  int
+	l lexer
+	t token
 }
 
 func (p *parser) atEnd() bool {
-	return p.pos >= len(p.toks)
+	return p.t.Type == t_eof
 }
 
 func (p *parser) cur() token {
-	if !p.atEnd() {
-		return p.toks[p.pos]
+	return p.t
+}
+
+func (p *parser) advance() error {
+	var err error
+	p.t, err = p.l.next()
+	if errors.Is(err, io.EOF) {
+		return nil
 	}
-	return token{Type: t_eof}
+	return err
 }
 
 func (p *parser) expect(t t_json) (token, error) {
@@ -25,18 +33,25 @@ func (p *parser) expect(t t_json) (token, error) {
 	if tok.Type != t {
 		return token{Type: t_eof}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[tok.Type], tokennames[t])
 	}
-	p.pos++
+	err := p.advance()
+	if err != nil {
+		return tok, err
+	}
 	return tok, nil
 }
 
 // parses toks into a valid json representation, thus the return type can be
 // either map[string]any, []any, string, nil, false, true or a number
 func (p *parser) parse() (any, error) {
+	err := p.advance()
+	if err != nil {
+		return nil, err
+	}
 	if val, err := p.expression(); err != nil {
 		return nil, err
 	} else {
 		if !p.atEnd() {
-			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data of type ", tokennames[p.cur().Type])
+			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data", tokennames[p.cur().Type])
 		}
 		return val, nil
 	}
@@ -62,7 +77,10 @@ func (p *parser) object() (map[string]any, error) {
 	m := map[string]any{}
 
 	if p.cur().Type == t_right_curly {
-		p.pos++
+		err = p.advance()
+		if err != nil {
+			return nil, err
+		}
 		return m, nil
 	}
 
@@ -113,7 +131,10 @@ func (p *parser) array() ([]any, error) {
 		return nil, err
 	}
 	if p.cur().Type == t_right_braket {
-		p.pos++
+		err = p.advance()
+		if err != nil {
+			return nil, err
+		}
 		return []any{}, nil
 	}
 
@@ -141,7 +162,7 @@ func (p *parser) array() ([]any, error) {
 }
 
 func (p *parser) atom() (any, error) {
-	cc := p.toks[p.pos]
+	cc := p.cur()
 	var val any
 	switch cc.Type {
 	case t_string, t_number:
@@ -156,6 +177,10 @@ func (p *parser) atom() (any, error) {
 		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[cc.Type])
 	}
 
-	p.pos++
+	err := p.advance()
+	if err != nil {
+		return nil, err
+	}
+
 	return val, nil
 }
