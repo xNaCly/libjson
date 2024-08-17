@@ -2,6 +2,7 @@ package libjson
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -48,7 +49,11 @@ type JSON struct {
 }
 
 func (j *JSON) get(path string) (any, error) {
-	return nil, nil
+	if len(path) == 0 {
+		return j.obj, nil
+	}
+	// TODO:
+	return nil, fmt.Errorf("%w: %q", errors.ErrUnsupported, path)
 }
 
 func (j *JSON) set(path string, value any) error {
@@ -56,11 +61,11 @@ func (j *JSON) set(path string, value any) error {
 }
 
 func (j *JSON) MarshalJSON() ([]byte, error) {
-	// TODO: this needs work
 	return json.Marshal(j.obj)
 }
 
 func (j *JSON) compile() (func() (any, error), error) {
 	f := func() (any, error) { return nil, nil }
-	return f, nil
+	// TODO:
+	return f, errors.ErrUnsupported
 }

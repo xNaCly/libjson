@@ -89,12 +89,14 @@ func (p *parser) object() (map[string]any, error) {
 			return nil, err
 		}
 
-		keyStr := key.Val.(string)
-		// TODO:  think about making uniqueness check for object keys configurable
-		if _, ok := m[keyStr]; ok {
-			return nil, fmt.Errorf("Key %q is already set in this object", keyStr)
-		}
-		m[keyStr] = val
+		// TODO:  think about activating a uniqueness check for object keys,
+		// would add an other hashing and a branch for each object key parsed.
+		//
+		// if _, ok := m[key.Val.(string)]; ok {
+		// 	return nil, fmt.Errorf("Key %q is already set in this object", keyStr)
+		// }
+
+		m[key.Val.(string)] = val
 	}
 
 	_, err = p.expect(t_right_curly)
