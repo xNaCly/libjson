@@ -3,6 +3,8 @@ package libjson
 // json type
 type t_json uint8
 
+var empty = token{Type: t_eof}
+
 const (
 	t_string       t_json = iota // anything between ""
 	t_number                     // floating point, hex, etc

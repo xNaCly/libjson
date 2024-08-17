@@ -28,10 +28,9 @@ func (l *lexer) advance() (rune, bool) {
 }
 
 func (l *lexer) next() (token, error) {
-	e := token{t_eof, nil}
 	cc, ok := l.advance()
 	if !ok {
-		return e, io.EOF
+		return empty, io.EOF
 	}
 
 	tt := t_eof
@@ -39,7 +38,7 @@ func (l *lexer) next() (token, error) {
 	for cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
 		cc, ok = l.advance()
 		if !ok {
-			return e, io.EOF
+			return empty, io.EOF
 		}
 	}
 
@@ -66,26 +65,26 @@ func (l *lexer) next() (token, error) {
 			buf.WriteRune(cc)
 		}
 		if cc != '"' {
-			return e, errors.New("Unterminated string detected")
+			return empty, errors.New("Unterminated string detected")
 		}
 		return token{Type: t_string, Val: buf.String()}, nil
 	case 't': // this should always be the 'true' atom and is therefore optimised here
 		if r, ok := l.advanceInt(3); ok && (r[0] == 'r' && r[1] == 'u' && r[2] == 'e') {
 			tt = t_true
 		} else {
-			return e, errors.New("Failed to read the expected 'true' atom")
+			return empty, errors.New("Failed to read the expected 'true' atom")
 		}
 	case 'f': // this should always be the 'false' atom and is therefore optimised here
 		if r, ok := l.advanceInt(4); ok && (r[0] == 'a' && r[1] == 'l' && r[2] == 's' && r[3] == 'e') {
 			tt = t_false
 		} else {
-			return e, errors.New("Failed to read the expected 'false' atom")
+			return empty, errors.New("Failed to read the expected 'false' atom")
 		}
 	case 'n': // this should always be the 'null' atom and is therefore optimised here
 		if r, ok := l.advanceInt(3); ok && (r[0] == 'u' && r[1] == 'l' && r[2] == 'l') {
 			tt = t_null
 		} else {
-			return e, errors.New("Failed to read the expected 'null' atom")
+			return empty, errors.New("Failed to read the expected 'null' atom")
 		}
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
@@ -103,10 +102,10 @@ func (l *lexer) next() (token, error) {
 				l.r.UnreadRune()
 				return token{Type: t_number, Val: number}, nil
 			} else {
-				return e, fmt.Errorf("Invalid floating point number %q: %w", buf.String(), err)
+				return empty, fmt.Errorf("Invalid floating point number %q: %w", buf.String(), err)
 			}
 		} else {
-			return e, fmt.Errorf("Unexpected character %q at this position.", cc)
+			return empty, fmt.Errorf("Unexpected character %q at this position.", cc)
 		}
 	}
 

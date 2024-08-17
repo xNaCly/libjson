@@ -31,7 +31,7 @@ func (p *parser) advance() error {
 func (p *parser) expect(t t_json) (token, error) {
 	tok := p.cur()
 	if tok.Type != t {
-		return token{Type: t_eof}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[tok.Type], tokennames[t])
+		return empty, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[tok.Type], tokennames[t])
 	}
 	err := p.advance()
 	if err != nil {
