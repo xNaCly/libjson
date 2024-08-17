@@ -1,4 +1,4 @@
-module github.com/xnacly/go-json
+module github.com/xnacly/libjson
 
 go 1.22.6
 
