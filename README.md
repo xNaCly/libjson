@@ -61,16 +61,26 @@ Below this section is a list of performance improvements and their impact on
 the overall performance as well as the full results of
 [test/bench.sh](test/bench.sh).
 
-### Latest
+### [e08beba](https://github.com/xNaCly/libjson/commit/e08bebada39441d9b6a20cb05251488ddce68285)
 
-| JSON size | `encoding/json` | `libjson`   |
-| --------- | --------------- | ----------- |
-| 64KB      | 670.796µs       | 692.776µs   |
-| 128KB     | 2.700935ms      | 2.853186ms  |
-| 256KB     | 2.734796ms      | 2.880656ms  |
-| 512KB     | 5.492051ms      | 7.215417ms  |
-| 1MB       | 10.85996ms      | 15.531744ms |
-| 5MB       | 52.169431ms     | 77.415754ms |
+| JSON size | `encoding/json` | `libjson` |
+| --------- | --------------- | --------- |
+| 1MB       | 11.7ms          | 13.1ms    |
+| 5MB       | 55.2ms          | 64.8ms    |
+
+The optimisation in this commit is to no longer tokenize the whole input before
+starting the parser but attaching the lexer to the parser. This allows the
+parser to invoke the tokenization of the next token on demand, for instance
+once the parser needs to advance. This reduces the runtime around 4ms for the
+1MB input and 14ms for 5MB, resulting in a 1.33x and a 1.22x runtime reduction,
+pretty good for such a simple change.
+
+### [be686d2](https://github.com/xNaCly/libjson/commit/be686d2c85c07cdfa91295052db54001d8cd5cc8)
+
+| JSON size | `encoding/json` | `libjson` |
+| --------- | --------------- | --------- |
+| 1MB       | 11.7ms          | 17.4ms    |
+| 5MB       | 55.2ms          | 78.5ms    |
 
 For the first naiive implementation, these results are fairly good and not too
 far behind the `encoding/go` implementation, however there are some potential
@@ -108,16 +118,26 @@ Output looks something like:
 ```text
 fetching example data
 building executable
-[libjson] 64KB: 692.776µs
-[libjson] 128KB: 2.853186ms
-[libjson] 256KB: 2.880656ms
-[libjson] 512KB: 7.215417ms
-[libjson] 1MB: 15.531744ms
-[libjson] 5MB: 77.415754ms
-[gojson] 64KB: 670.796µs
-[gojson] 128KB: 2.700935ms
-[gojson] 256KB: 2.734796ms
-[gojson] 512KB: 5.492051ms
-[gojson] 1MB: 10.85996ms
-[gojson] 5MB: 52.169431ms
+Benchmark 1: ./test ./1MB.json
+  Time (mean ± σ):      13.1 ms ±   0.2 ms    [User: 12.1 ms, System: 2.8 ms]
+  Range (min … max):    12.7 ms …  13.8 ms    210 runs
+
+Benchmark 2: ./test -libjson=false ./1MB.json
+  Time (mean ± σ):      11.7 ms ±   0.3 ms    [User: 9.5 ms, System: 2.1 ms]
+  Range (min … max):    11.1 ms …  12.7 ms    237 runs
+
+Summary
+  ./test -libjson=false ./1MB.json ran
+    1.12 ± 0.03 times faster than ./test ./1MB.json
+Benchmark 1: ./test ./5MB.json
+  Time (mean ± σ):      64.2 ms ±   0.9 ms    [User: 79.3 ms, System: 13.1 ms]
+  Range (min … max):    62.6 ms …  67.0 ms    46 runs
+
+Benchmark 2: ./test -libjson=false ./5MB.json
+  Time (mean ± σ):      55.2 ms ±   1.1 ms    [User: 51.3 ms, System: 6.3 ms]
+  Range (min … max):    53.6 ms …  58.0 ms    53 runs
+
+Summary
+  ./test -libjson=false ./5MB.json ran
+    1.16 ± 0.03 times faster than ./test ./5MB.json
 ```
