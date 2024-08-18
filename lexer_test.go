@@ -35,7 +35,7 @@ func TestLexerStructure(t *testing.T) {
 
 func TestLexerAtoms(t *testing.T) {
 	json := `
-    "string""" ""
+    "string""" "🤣"
     true false null
     1 0 12.5 1e15 -1929 -0
     -1.4E+5 -129.1928e-19028
@@ -48,7 +48,7 @@ func TestLexerAtoms(t *testing.T) {
 	tList := []token{
 		{Type: t_string, Val: "string"},
 		{Type: t_string, Val: ""},
-		{Type: t_string, Val: ""},
+		{Type: t_string, Val: "🤣"},
 		{Type: t_true},
 		{Type: t_false},
 		{Type: t_null},
@@ -113,6 +113,7 @@ func TestLexer(t *testing.T) {
 	}
 
 	assert.EqualValues(t, tList, toks)
+
 }
 
 func TestLexerFail(t *testing.T) {
@@ -126,6 +127,7 @@ func TestLexerFail(t *testing.T) {
 		"0E",
 		"1eE2",
 		`{"test": 'value'}`,
+		"🤣",
 	}
 	for _, in := range input {
 		t.Run(in, func(t *testing.T) {
