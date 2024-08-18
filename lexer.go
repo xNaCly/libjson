@@ -13,12 +13,6 @@ type lexer struct {
 	r *bufio.Reader
 }
 
-func (l *lexer) advanceInt(amount int) ([]byte, bool) {
-	b := make([]byte, amount)
-	readBytes, err := l.r.Read(b)
-	return b, err == nil && readBytes == amount
-}
-
 func (l *lexer) advance() (rune, bool) {
 	cc, _, err := l.r.ReadRune()
 	if err != nil {
@@ -27,8 +21,16 @@ func (l *lexer) advance() (rune, bool) {
 	return cc, true
 }
 
+func (l *lexer) advanceByte() (byte, bool) {
+	cb, err := l.r.ReadByte()
+	if err != nil {
+		return 0, false
+	}
+	return cb, true
+}
+
 func (l *lexer) next() (token, error) {
-	cc, ok := l.advance()
+	cc, ok := l.advanceByte()
 	if !ok {
 		return empty, io.EOF
 	}
@@ -36,7 +38,7 @@ func (l *lexer) next() (token, error) {
 	tt := t_eof
 
 	for cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
-		cc, ok = l.advance()
+		cc, ok = l.advanceByte()
 		if !ok {
 			return empty, io.EOF
 		}
@@ -57,41 +59,48 @@ func (l *lexer) next() (token, error) {
 		tt = t_colon
 	case '"':
 		buf := strings.Builder{}
+		buf.Grow(16)
+		var cr rune
 		for {
-			cc, ok = l.advance()
-			if !ok || cc == '"' {
+			cr, ok = l.advance()
+			if !ok || cr == '"' {
 				break
 			}
-			buf.WriteRune(cc)
+			buf.WriteRune(cr)
 		}
-		if cc != '"' {
+		if cr != '"' {
 			return empty, errors.New("Unterminated string detected")
 		}
+
 		return token{Type: t_string, Val: buf.String()}, nil
 	case 't': // this should always be the 'true' atom and is therefore optimised here
-		if r, ok := l.advanceInt(3); ok && (r[0] == 'r' && r[1] == 'u' && r[2] == 'e') {
-			tt = t_true
-		} else {
+		b := make([]byte, 3)
+		_, err := io.ReadFull(l.r, b[:])
+		if err != nil || !(b[0] == 'r' && b[1] == 'u' && b[2] == 'e') {
 			return empty, errors.New("Failed to read the expected 'true' atom")
 		}
+		tt = t_true
 	case 'f': // this should always be the 'false' atom and is therefore optimised here
-		if r, ok := l.advanceInt(4); ok && (r[0] == 'a' && r[1] == 'l' && r[2] == 's' && r[3] == 'e') {
-			tt = t_false
-		} else {
+		b := make([]byte, 4)
+		_, err := io.ReadFull(l.r, b[:])
+		if err != nil || !(b[0] == 'a' && b[1] == 'l' && b[2] == 's' && b[3] == 'e') {
 			return empty, errors.New("Failed to read the expected 'false' atom")
 		}
+		tt = t_false
 	case 'n': // this should always be the 'null' atom and is therefore optimised here
-		if r, ok := l.advanceInt(3); ok && (r[0] == 'u' && r[1] == 'l' && r[2] == 'l') {
-			tt = t_null
-		} else {
+		b := make([]byte, 3)
+		_, err := io.ReadFull(l.r, b[:])
+		if err != nil || !(b[0] == 'u' && b[1] == 'l' && b[2] == 'l') {
 			return empty, errors.New("Failed to read the expected 'null' atom")
 		}
+		tt = t_null
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
 			buf := strings.Builder{}
+			buf.Grow(16)
 			for (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
-				buf.WriteRune(cc)
-				cc, ok = l.advance()
+				buf.WriteByte(cc)
+				cc, ok = l.advanceByte()
 				if !ok {
 					break
 				}
@@ -99,7 +108,7 @@ func (l *lexer) next() (token, error) {
 			if number, err := strconv.ParseFloat(buf.String(), 64); err == nil {
 				// the read at the start of the for loop iterates us too
 				// far, thus we skip that here
-				l.r.UnreadRune()
+				l.r.UnreadByte()
 				return token{Type: t_number, Val: number}, nil
 			} else {
 				return empty, fmt.Errorf("Invalid floating point number %q: %w", buf.String(), err)
