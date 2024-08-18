@@ -61,6 +61,27 @@ Below this section is a list of performance improvements and their impact on
 the overall performance as well as the full results of
 [test/bench.sh](test/bench.sh).
 
+### []()
+
+| JSON size | `encoding/json` | `libjson` |
+| --------- | --------------- | --------- |
+| 1MB       | 12.3ms          | 14.2ms    |
+| 5MB       | 59.6ms          | 68.8ms    |
+| 10MB      | 115.3ms         | 131.8ms   |
+
+The changes below resulted in the following savings: \~6ms for 1MB, \~25ms for
+5MB and \~60ms for 10MB.
+
+- reuse buffer `lexer.buf` for number and string processing
+- switch from `(*bufio.Reader).ReadRune()` to `(*bufio.Reader).ReadByte()`
+- used `*(*string)(unsafe.Pointer(&l.buf))` to skip strings.Builder usage for
+  number and string processing
+- remove and inline buffer usage for null, true and false, skipping allocations
+- benchmark the optimal initial cap for `lexer.buf`, maps and arrays to be 8
+- remove `errors.Is` and check for `t_eof` instead
+- move number parsing to `(*parser).atom()` and change type of `token.Val` to string,
+  this saves a lot of assertions, etc
+
 ### [58d9360](https://github.com/xNaCly/libjson/commit/58d9360bae0576e761e021ee52035713206fdab1)
 
 | JSON size | `encoding/json` | `libjson` |

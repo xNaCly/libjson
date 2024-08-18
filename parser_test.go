@@ -2,6 +2,7 @@ package libjson
 
 import (
 	"bufio"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestParserAtoms(t *testing.T) {
 			out, err := p.parse()
 			assert.NoError(t, err)
 			if !assert.EqualValues(t, wanted[i], out) {
-				panic("lol")
+				fmt.Println(p.t)
 			}
 		})
 	}
@@ -132,6 +133,9 @@ func TestParserFail(t *testing.T) {
 		// `{ "key": 1, "key": 2 }`, errors for duplicate keys was disabled, see parser.object()
 		`{:"b"}`,
 		`{"x"::"b"}`,
+		"1.0e+",
+		"0E",
+		"1eE2",
 	}
 	for _, in := range input {
 		t.Run(in, func(t *testing.T) {

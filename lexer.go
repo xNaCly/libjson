@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
+	"unsafe"
 )
 
 type lexer struct {
-	r *bufio.Reader
+	r   *bufio.Reader
+	buf []byte
 }
 
-func (l *lexer) advance() (rune, bool) {
-	cc, _, err := l.r.ReadRune()
+func (l *lexer) advance() (byte, bool) {
+	cc, err := l.r.ReadByte()
 	if err != nil {
 		return 0, false
 	}
@@ -50,67 +50,81 @@ func (l *lexer) next() (token, error) {
 	case ':':
 		tt = t_colon
 	case '"':
-		buf := strings.Builder{}
-		buf.Grow(16)
-		var cr rune
 		for {
-			cr, ok = l.advance()
-			if !ok || cr == '"' {
+			cc, ok = l.advance()
+			if cc == '"' {
 				break
+			} else if !ok {
+				return empty, errors.New("Unterminated string detected")
 			}
-			buf.WriteRune(cr)
+			l.buf = append(l.buf, cc)
 		}
-		if cr != '"' {
-			return empty, errors.New("Unterminated string detected")
-		}
-
-		return token{Type: t_string, Val: buf.String()}, nil
+		t := token{Type: t_string, Val: *(*string)(unsafe.Pointer(&l.buf))}
+		l.buf = make([]byte, 0, 8)
+		return t, nil
 	case 't': // this should always be the 'true' atom and is therefore optimised here
-		b := make([]byte, 3)
-		_, err := io.ReadFull(l.r, b[:])
-		if err != nil || !(b[0] == 'r' && b[1] == 'u' && b[2] == 'e') {
+		if b, err := l.r.ReadByte(); err != nil && b != 'r' {
+			return empty, errors.New("Failed to read the expected 'true' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 'u' {
+			return empty, errors.New("Failed to read the expected 'true' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 'e' {
 			return empty, errors.New("Failed to read the expected 'true' atom")
 		}
 		tt = t_true
 	case 'f': // this should always be the 'false' atom and is therefore optimised here
-		b := make([]byte, 4)
-		_, err := io.ReadFull(l.r, b[:])
-		if err != nil || !(b[0] == 'a' && b[1] == 'l' && b[2] == 's' && b[3] == 'e') {
+		if b, err := l.r.ReadByte(); err != nil && b != 'a' {
+			return empty, errors.New("Failed to read the expected 'false' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 'l' {
+			return empty, errors.New("Failed to read the expected 'false' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 's' {
+			return empty, errors.New("Failed to read the expected 'false' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 'e' {
 			return empty, errors.New("Failed to read the expected 'false' atom")
 		}
 		tt = t_false
 	case 'n': // this should always be the 'null' atom and is therefore optimised here
-		b := make([]byte, 3)
-		_, err := io.ReadFull(l.r, b[:])
-		if err != nil || !(b[0] == 'u' && b[1] == 'l' && b[2] == 'l') {
+		if b, err := l.r.ReadByte(); err != nil && b != 'u' {
+			return empty, errors.New("Failed to read the expected 'null' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 'l' {
+			return empty, errors.New("Failed to read the expected 'null' atom")
+		}
+		if b, err := l.r.ReadByte(); err != nil && b != 'l' {
 			return empty, errors.New("Failed to read the expected 'null' atom")
 		}
 		tt = t_null
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
-			buf := strings.Builder{}
-			buf.Grow(16)
+			broke := false
 			for (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
-				buf.WriteRune(cc)
+				l.buf = append(l.buf, cc)
 				cc, ok = l.advance()
 				if !ok {
+					broke = true
 					break
 				}
 			}
-			if number, err := strconv.ParseFloat(buf.String(), 64); err == nil {
+
+			if !broke {
 				// the read at the start of the for loop iterates us too
-				// far, thus we skip that here
-				l.r.UnreadRune()
-				return token{Type: t_number, Val: number}, nil
-			} else {
-				return empty, fmt.Errorf("Invalid floating point number %q: %w", buf.String(), err)
+				// far, if we didnt break out of the loop but exited it
+				// according to its condition, thus we skip that here
+				l.r.UnreadByte()
 			}
+			t := token{Type: t_number, Val: *(*string)(unsafe.Pointer(&l.buf))}
+			l.buf = make([]byte, 0, 8)
+			return t, nil
 		} else {
 			return empty, fmt.Errorf("Unexpected character %q at this position.", cc)
 		}
 	}
 
-	return token{tt, nil}, nil
+	return token{tt, ""}, nil
 }
 
 // lex is only intended for tests, use lexer.next() for production code

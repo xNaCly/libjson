@@ -1,9 +1,8 @@
 package libjson
 
 import (
-	"errors"
 	"fmt"
-	"io"
+	"strconv"
 )
 
 type parser struct {
@@ -11,33 +10,20 @@ type parser struct {
 	t token
 }
 
-func (p *parser) atEnd() bool {
-	return p.t.Type == t_eof
-}
-
-func (p *parser) cur() token {
-	return p.t
-}
-
 func (p *parser) advance() error {
-	var err error
-	p.t, err = p.l.next()
-	if errors.Is(err, io.EOF) {
+	t, err := p.l.next()
+	p.t = t
+	if p.t.Type == t_eof {
 		return nil
 	}
 	return err
 }
 
-func (p *parser) expect(t t_json) (token, error) {
-	tok := p.t
-	if tok.Type != t {
-		return empty, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[tok.Type], tokennames[t])
+func (p *parser) expect(t t_json) error {
+	if p.t.Type != t {
+		return fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.t.Type], tokennames[t])
 	}
-	err := p.advance()
-	if err != nil {
-		return tok, err
-	}
-	return tok, nil
+	return p.advance()
 }
 
 // parses toks into a valid json representation, thus the return type can be
@@ -50,7 +36,7 @@ func (p *parser) parse() (any, error) {
 	if val, err := p.expression(); err != nil {
 		return nil, err
 	} else {
-		if !p.atEnd() {
+		if p.t.Type != t_eof {
 			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data", tokennames[p.t.Type])
 		}
 		return val, nil
@@ -58,10 +44,9 @@ func (p *parser) parse() (any, error) {
 }
 
 func (p *parser) expression() (any, error) {
-	t := p.t.Type
-	if t == t_left_curly {
+	if p.t.Type == t_left_curly {
 		return p.object()
-	} else if t == t_left_braket {
+	} else if p.t.Type == t_left_braket {
 		return p.array()
 	} else {
 		return p.atom()
@@ -69,7 +54,7 @@ func (p *parser) expression() (any, error) {
 }
 
 func (p *parser) object() (map[string]any, error) {
-	_, err := p.expect(t_left_curly)
+	err := p.expect(t_left_curly)
 	if err != nil {
 		return nil, err
 	}
@@ -84,20 +69,21 @@ func (p *parser) object() (map[string]any, error) {
 		return m, nil
 	}
 
-	for !p.atEnd() && p.t.Type != t_right_curly {
+	for p.t.Type != t_eof && p.t.Type != t_right_curly {
 		if len(m) > 0 {
-			_, err := p.expect(t_comma)
+			err := p.expect(t_comma)
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		key, err := p.expect(t_string)
+		key := p.t
+		err := p.expect(t_string)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = p.expect(t_colon)
+		err = p.expect(t_colon)
 		if err != nil {
 			return nil, err
 		}
@@ -114,10 +100,10 @@ func (p *parser) object() (map[string]any, error) {
 		// 	return nil, fmt.Errorf("Key %q is already set in this object", keyStr)
 		// }
 
-		m[key.Val.(string)] = val
+		m[key.Val] = val
 	}
 
-	_, err = p.expect(t_right_curly)
+	err = p.expect(t_right_curly)
 	if err != nil {
 		return nil, err
 	}
@@ -126,23 +112,21 @@ func (p *parser) object() (map[string]any, error) {
 }
 
 func (p *parser) array() ([]any, error) {
-	_, err := p.expect(t_left_braket)
+	err := p.expect(t_left_braket)
 	if err != nil {
 		return nil, err
 	}
+
 	if p.t.Type == t_right_braket {
 		err = p.advance()
-		if err != nil {
-			return nil, err
-		}
-		return []any{}, nil
+		return []any{}, err
 	}
 
 	a := make([]any, 0, 8)
 
-	for !p.atEnd() && p.t.Type != t_right_braket {
+	for p.t.Type != t_eof && p.t.Type != t_right_braket {
 		if len(a) > 0 {
-			_, err := p.expect(t_comma)
+			err := p.expect(t_comma)
 			if err != nil {
 				return nil, err
 			}
@@ -154,19 +138,21 @@ func (p *parser) array() ([]any, error) {
 		a = append(a, node)
 	}
 
-	_, err = p.expect(t_right_braket)
-	if err != nil {
-		return nil, err
-	}
-	return a, nil
+	return a, p.expect(t_right_braket)
 }
 
 func (p *parser) atom() (any, error) {
 	cc := p.t
 	var val any
 	switch cc.Type {
-	case t_string, t_number:
+	case t_string:
 		val = cc.Val
+	case t_number:
+		if number, err := strconv.ParseFloat(cc.Val, 64); err == nil {
+			val = number
+		} else {
+			return empty, fmt.Errorf("Invalid floating point number %q: %w", cc.Val, err)
+		}
 	case t_true:
 		val = true
 	case t_false:
@@ -177,10 +163,5 @@ func (p *parser) atom() (any, error) {
 		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[cc.Type])
 	}
 
-	err := p.advance()
-	if err != nil {
-		return nil, err
-	}
-
-	return val, nil
+	return val, p.advance()
 }

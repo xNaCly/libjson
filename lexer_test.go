@@ -42,9 +42,7 @@ func TestLexerAtoms(t *testing.T) {
     `
 	l := lexer{}
 	toks, err := l.lex(strings.NewReader(json))
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	tList := []token{
 		{Type: t_string, Val: "string"},
 		{Type: t_string, Val: ""},
@@ -52,14 +50,14 @@ func TestLexerAtoms(t *testing.T) {
 		{Type: t_true},
 		{Type: t_false},
 		{Type: t_null},
-		{Type: t_number, Val: 1.0},
-		{Type: t_number, Val: 0.0},
-		{Type: t_number, Val: 12.5},
-		{Type: t_number, Val: 1e15},
-		{Type: t_number, Val: -1929.0},
-		{Type: t_number, Val: -0.0},
-		{Type: t_number, Val: -1.4e+5},
-		{Type: t_number, Val: -129.1928e-19028},
+		{Type: t_number, Val: "1"},
+		{Type: t_number, Val: "0"},
+		{Type: t_number, Val: "12.5"},
+		{Type: t_number, Val: "1e15"},
+		{Type: t_number, Val: "-1929"},
+		{Type: t_number, Val: "-0"},
+		{Type: t_number, Val: "-1.4E+5"},
+		{Type: t_number, Val: "-129.1928e-19028"},
 	}
 	assert.EqualValues(t, tList, toks)
 }
@@ -91,7 +89,7 @@ func TestLexer(t *testing.T) {
 		{Type: t_left_braket},
 		{Type: t_string, Val: "string"},
 		{Type: t_comma},
-		{Type: t_number, Val: 123456789.0},
+		{Type: t_number, Val: "123456789"},
 		{Type: t_comma},
 		{Type: t_true},
 		{Type: t_comma},
@@ -123,9 +121,6 @@ func TestLexerFail(t *testing.T) {
 		"'",
 		`0xFF`,
 		string([]byte{0x0C}),
-		"1.0e+",
-		"0E",
-		"1eE2",
 		`{"test": 'value'}`,
 		"🤣",
 	}

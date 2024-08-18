@@ -37,5 +37,5 @@ var tokennames = map[t_json]string{
 
 type token struct {
 	Type t_json
-	Val  any // only populated for number and string (can be float64 or string, depends on .Type)
+	Val  string // only populated for number and string
 }
