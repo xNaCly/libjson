@@ -68,7 +68,7 @@ func TestLexer(t *testing.T) {
 	json := `
     {
         "key": "value",
-        "arrayOfDataTypes": ["string", 1234, true, false, null],
+        "arrayOfDataTypes": ["string", 123456789, true, false, null],
         "subobject": { "key": "value" },
     }
     `
@@ -91,7 +91,7 @@ func TestLexer(t *testing.T) {
 		{Type: t_left_braket},
 		{Type: t_string, Val: "string"},
 		{Type: t_comma},
-		{Type: t_number, Val: 1234.0},
+		{Type: t_number, Val: 123456789.0},
 		{Type: t_comma},
 		{Type: t_true},
 		{Type: t_comma},

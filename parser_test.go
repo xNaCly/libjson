@@ -28,7 +28,9 @@ func TestParserAtoms(t *testing.T) {
 			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
 			out, err := p.parse()
 			assert.NoError(t, err)
-			assert.EqualValues(t, wanted[i], out)
+			if !assert.EqualValues(t, wanted[i], out) {
+				panic("lol")
+			}
 		})
 	}
 }

@@ -21,16 +21,8 @@ func (l *lexer) advance() (rune, bool) {
 	return cc, true
 }
 
-func (l *lexer) advanceByte() (byte, bool) {
-	cb, err := l.r.ReadByte()
-	if err != nil {
-		return 0, false
-	}
-	return cb, true
-}
-
 func (l *lexer) next() (token, error) {
-	cc, ok := l.advanceByte()
+	cc, ok := l.advance()
 	if !ok {
 		return empty, io.EOF
 	}
@@ -38,7 +30,7 @@ func (l *lexer) next() (token, error) {
 	tt := t_eof
 
 	for cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
-		cc, ok = l.advanceByte()
+		cc, ok = l.advance()
 		if !ok {
 			return empty, io.EOF
 		}
@@ -99,8 +91,8 @@ func (l *lexer) next() (token, error) {
 			buf := strings.Builder{}
 			buf.Grow(16)
 			for (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
-				buf.WriteByte(cc)
-				cc, ok = l.advanceByte()
+				buf.WriteRune(cc)
+				cc, ok = l.advance()
 				if !ok {
 					break
 				}
@@ -108,7 +100,7 @@ func (l *lexer) next() (token, error) {
 			if number, err := strconv.ParseFloat(buf.String(), 64); err == nil {
 				// the read at the start of the for loop iterates us too
 				// far, thus we skip that here
-				l.r.UnreadByte()
+				l.r.UnreadRune()
 				return token{Type: t_number, Val: number}, nil
 			} else {
 				return empty, fmt.Errorf("Invalid floating point number %q: %w", buf.String(), err)

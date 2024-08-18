@@ -29,7 +29,7 @@ func (p *parser) advance() error {
 }
 
 func (p *parser) expect(t t_json) (token, error) {
-	tok := p.cur()
+	tok := p.t
 	if tok.Type != t {
 		return empty, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[tok.Type], tokennames[t])
 	}
@@ -51,14 +51,14 @@ func (p *parser) parse() (any, error) {
 		return nil, err
 	} else {
 		if !p.atEnd() {
-			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data", tokennames[p.cur().Type])
+			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data", tokennames[p.t.Type])
 		}
 		return val, nil
 	}
 }
 
 func (p *parser) expression() (any, error) {
-	t := p.cur().Type
+	t := p.t.Type
 	if t == t_left_curly {
 		return p.object()
 	} else if t == t_left_braket {
@@ -74,9 +74,9 @@ func (p *parser) object() (map[string]any, error) {
 		return nil, err
 	}
 
-	m := map[string]any{}
+	m := make(map[string]any, 8)
 
-	if p.cur().Type == t_right_curly {
+	if p.t.Type == t_right_curly {
 		err = p.advance()
 		if err != nil {
 			return nil, err
@@ -84,7 +84,7 @@ func (p *parser) object() (map[string]any, error) {
 		return m, nil
 	}
 
-	for !p.atEnd() && p.cur().Type != t_right_curly {
+	for !p.atEnd() && p.t.Type != t_right_curly {
 		if len(m) > 0 {
 			_, err := p.expect(t_comma)
 			if err != nil {
@@ -130,7 +130,7 @@ func (p *parser) array() ([]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.cur().Type == t_right_braket {
+	if p.t.Type == t_right_braket {
 		err = p.advance()
 		if err != nil {
 			return nil, err
@@ -138,9 +138,9 @@ func (p *parser) array() ([]any, error) {
 		return []any{}, nil
 	}
 
-	a := make([]any, 0, 16)
+	a := make([]any, 0, 8)
 
-	for !p.atEnd() && p.cur().Type != t_right_braket {
+	for !p.atEnd() && p.t.Type != t_right_braket {
 		if len(a) > 0 {
 			_, err := p.expect(t_comma)
 			if err != nil {
@@ -162,7 +162,7 @@ func (p *parser) array() ([]any, error) {
 }
 
 func (p *parser) atom() (any, error) {
-	cc := p.cur()
+	cc := p.t
 	var val any
 	switch cc.Type {
 	case t_string, t_number:
