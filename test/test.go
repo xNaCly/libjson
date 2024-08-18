@@ -3,15 +3,21 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"os"
-	"time"
+
+	// "runtime/pprof"
 
 	"github.com/xnacly/libjson"
 )
 
 func main() {
+	// f, err := os.Create("cpu.pprof")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
 	lj := flag.Bool("libjson", true, "benchmark libjson or gojson")
 	flag.Parse()
 	if *lj {
@@ -23,13 +29,10 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		s := time.Now()
 		_, err = libjson.NewReader(file)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		end := time.Now().Sub(s)
-		fmt.Println(end)
 	} else {
 		args := flag.Args()
 		if len(args) == 0 {
@@ -46,13 +49,10 @@ func main() {
 			Bio      string
 			Version  float64
 		}{}
-		s := time.Now()
 		d := json.NewDecoder(file)
 		err = d.Decode(&m)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		end := time.Now().Sub(s)
-		fmt.Println(end)
 	}
 }

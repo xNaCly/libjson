@@ -61,6 +61,22 @@ Below this section is a list of performance improvements and their impact on
 the overall performance as well as the full results of
 [test/bench.sh](test/bench.sh).
 
+### [58d9360](https://github.com/xNaCly/libjson/commit/58d9360bae0576e761e021ee52035713206fdab1)
+
+| JSON size | `encoding/json` | `libjson` |
+| --------- | --------------- | --------- |
+| 1MB       | 12.2ms          | 19.9ms    |
+| 5MB       | 60.2ms          | 95.2ms    |
+| 10MB      | 117.2ms         | 183.8ms   |
+
+I had to change some things to account for issues occuring in the reading of
+atoms, such as true, false and null. All of those are read by buffering the
+size of chars they have and reading this buffer at once, instead of iterating
+and multiple reads. This did not work correctly because i used
+`(*bufio.Reader).Read`, which sometimes does not read all bytes fitting in the
+buffer passed into it. Thats why these commit introduces a lot of performance
+regressions.
+
 ### [e08beba](https://github.com/xNaCly/libjson/commit/e08bebada39441d9b6a20cb05251488ddce68285)
 
 | JSON size | `encoding/json` | `libjson` |
@@ -105,7 +121,7 @@ these operations, thus making the parser faster for large objects.
 
 ### Reproduce locally
 
-> Make sure you have the go toolchain installed for this.
+> Make sure you have the go toolchain and python3 installed for this.
 
 ```shell
 cd test/
