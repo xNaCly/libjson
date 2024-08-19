@@ -3,6 +3,7 @@ package libjson
 import (
 	"fmt"
 	"strconv"
+	"unsafe"
 )
 
 type parser struct {
@@ -77,7 +78,7 @@ func (p *parser) object() (map[string]any, error) {
 			}
 		}
 
-		key := p.t
+		key := *(*string)(unsafe.Pointer(&p.t.Val))
 		err := p.expect(t_string)
 		if err != nil {
 			return nil, err
@@ -96,11 +97,11 @@ func (p *parser) object() (map[string]any, error) {
 		// TODO:  think about activating a uniqueness check for object keys,
 		// would add an other hashing and a branch for each object key parsed.
 		//
-		// if _, ok := m[key.Val.(string)]; ok {
-		// 	return nil, fmt.Errorf("Key %q is already set in this object", keyStr)
+		// if _, ok := m[key]; ok {
+		// 	return nil, fmt.Errorf("Key %q is already set in this object", key)
 		// }
 
-		m[key.Val] = val
+		m[key] = val
 	}
 
 	err = p.expect(t_right_curly)
@@ -142,26 +143,23 @@ func (p *parser) array() ([]any, error) {
 }
 
 func (p *parser) atom() (any, error) {
-	cc := p.t
-	var val any
-	switch cc.Type {
+	defer p.advance()
+	switch p.t.Type {
 	case t_string:
-		val = cc.Val
+		return *(*string)(unsafe.Pointer(&p.t.Val)), nil
 	case t_number:
-		if number, err := strconv.ParseFloat(cc.Val, 64); err == nil {
-			val = number
-		} else {
-			return empty, fmt.Errorf("Invalid floating point number %q: %w", cc.Val, err)
+		number, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&p.t.Val)), 64)
+		if err == nil {
+			return number, nil
 		}
+		return empty, fmt.Errorf("Invalid floating point number %q: %w", p.t.Val, err)
 	case t_true:
-		val = true
+		return true, nil
 	case t_false:
-		val = false
+		return false, nil
 	case t_null:
-		val = nil
+		return nil, nil
 	default:
-		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[cc.Type])
+		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[p.t.Type])
 	}
-
-	return val, p.advance()
 }

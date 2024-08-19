@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unsafe"
 )
 
 type lexer struct {
@@ -59,7 +58,7 @@ func (l *lexer) next() (token, error) {
 			}
 			l.buf = append(l.buf, cc)
 		}
-		t := token{Type: t_string, Val: *(*string)(unsafe.Pointer(&l.buf))}
+		t := token{Type: t_string, Val: l.buf}
 		l.buf = make([]byte, 0, 8)
 		return t, nil
 	case 't': // this should always be the 'true' atom and is therefore optimised here
@@ -116,7 +115,7 @@ func (l *lexer) next() (token, error) {
 				// according to its condition, thus we skip that here
 				l.r.UnreadByte()
 			}
-			t := token{Type: t_number, Val: *(*string)(unsafe.Pointer(&l.buf))}
+			t := token{Type: t_number, Val: l.buf}
 			l.buf = make([]byte, 0, 8)
 			return t, nil
 		} else {
@@ -124,7 +123,7 @@ func (l *lexer) next() (token, error) {
 		}
 	}
 
-	return token{tt, ""}, nil
+	return token{tt, nil}, nil
 }
 
 // lex is only intended for tests, use lexer.next() for production code

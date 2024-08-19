@@ -65,6 +65,17 @@ the overall performance as well as the full results of
 
 | JSON size | `encoding/json` | `libjson` |
 | --------- | --------------- | --------- |
+| 1MB       | 12.0ms          | 13.4ms    |
+| 5MB       | 58.4ms          | 66.3ms    |
+| 10MB      | 114.0ms         | 127.0ms   |
+
+- switch `token.Val` from `string` to `[]byte`, allows zero values to be `nil` and not `""`
+- move string allocation for `t_string` and `t_number` to `(*parser).atom()`
+
+### [58e19ff](https://github.com/xNaCly/libjson/commit/58e19ffa140b01ff873505cb500364c4fea566db)
+
+| JSON size | `encoding/json` | `libjson` |
+| --------- | --------------- | --------- |
 | 1MB       | 12.3ms          | 14.2ms    |
 | 5MB       | 59.6ms          | 68.8ms    |
 | 10MB      | 115.3ms         | 131.8ms   |
