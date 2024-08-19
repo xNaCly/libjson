@@ -12,25 +12,17 @@ type lexer struct {
 	buf []byte
 }
 
-func (l *lexer) advance() (byte, bool) {
+func (l *lexer) next() (token, error) {
 	cc, err := l.r.ReadByte()
 	if err != nil {
-		return 0, false
-	}
-	return cc, true
-}
-
-func (l *lexer) next() (token, error) {
-	cc, ok := l.advance()
-	if !ok {
 		return empty, io.EOF
 	}
 
 	tt := t_eof
 
 	for cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
-		cc, ok = l.advance()
-		if !ok {
+		cc, err = l.r.ReadByte()
+		if err != nil {
 			return empty, io.EOF
 		}
 	}
@@ -50,10 +42,10 @@ func (l *lexer) next() (token, error) {
 		tt = t_colon
 	case '"':
 		for {
-			cc, ok = l.advance()
+			cc, err = l.r.ReadByte()
 			if cc == '"' {
 				break
-			} else if !ok {
+			} else if err != nil {
 				return empty, errors.New("Unterminated string detected")
 			}
 			l.buf = append(l.buf, cc)
@@ -99,22 +91,27 @@ func (l *lexer) next() (token, error) {
 		tt = t_null
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
-			broke := false
-			for (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
-				l.buf = append(l.buf, cc)
-				cc, ok = l.advance()
-				if !ok {
-					broke = true
+			l.buf = append(l.buf, cc)
+			cc, err = l.r.ReadByte()
+			if err != nil {
+				break
+			}
+			for {
+				if (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
+					l.buf = append(l.buf, cc)
+					cc, err = l.r.ReadByte()
+					if err != nil {
+						break
+					}
+				} else {
+					// the read at the start of the for loop iterates us too
+					// far, if we didnt break out of the loop but exited it
+					// according to its condition, thus we skip that here
+					l.r.UnreadByte()
 					break
 				}
 			}
 
-			if !broke {
-				// the read at the start of the for loop iterates us too
-				// far, if we didnt break out of the loop but exited it
-				// according to its condition, thus we skip that here
-				l.r.UnreadByte()
-			}
 			t := token{Type: t_number, Val: l.buf}
 			l.buf = make([]byte, 0, 8)
 			return t, nil

@@ -67,7 +67,7 @@ func TestLexer(t *testing.T) {
     {
         "key": "value",
         "arrayOfDataTypes": ["string", 123456789, true, false, null],
-        "subobject": { "key": "value" },
+        "subobject": { "key": "value" }
     }
     `
 	l := lexer{}
@@ -106,7 +106,6 @@ func TestLexer(t *testing.T) {
 		{Type: t_colon},
 		{Type: t_string, Val: []byte("value")},
 		{Type: t_right_curly},
-		{Type: t_comma},
 		{Type: t_right_curly},
 	}
 
