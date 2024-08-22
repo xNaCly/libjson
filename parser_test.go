@@ -11,6 +11,7 @@ import (
 
 func TestParserAtoms(t *testing.T) {
 	input := []string{
+		"1",
 		"true",
 		"false",
 		"null",
@@ -18,6 +19,9 @@ func TestParserAtoms(t *testing.T) {
 		`"isastring"`,
 	}
 	wanted := []any{
+		// i forgor 💀
+		// (to test the lexing of single digit numbers, the eof handling was wrong)
+		1.0,
 		true,
 		false,
 		nil,

@@ -94,8 +94,10 @@ func (l *lexer) next() (token, error) {
 			l.buf = append(l.buf, cc)
 			cc, err = l.r.ReadByte()
 			if err != nil {
-				break
+				// we hit eof here
+				return token{Type: t_number, Val: l.buf}, nil
 			}
+
 			for {
 				if (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
 					l.buf = append(l.buf, cc)
