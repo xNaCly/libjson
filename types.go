@@ -1,7 +1,7 @@
 package libjson
 
 // json type
-type t_json uint32
+type t_json int32
 
 var empty = token{Type: t_eof, Val: nil}
 

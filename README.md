@@ -12,22 +12,22 @@ import (
 )
 
 func main() {
-    input := `{ "hello": {"world": ["hi"] } }`
-    jsonObj := libjson.New(jsonObj) // or libjson.NewReader(r io.Reader)
+	input := `{ "hello": {"world": ["hi"] } }`
+	jsonObj, _ := New(input) // or libjson.NewReader(r io.Reader)
 
-    // accessing values
-    fmt.Println(libjson.Get(jsonObj, "hello.world.0")) // hi
+	// accessing values
+	fmt.Println(Get[string](jsonObj, ".hello.world.0")) // hi
 
-    // updating values
-    libjson.Set(jsonObj, "hello.world.0", "heyho")
-    fmt.Println(libjson.Get(jsonObj, "hello.world.0")) // heyho
-    libjson.Set(jsonObj, "hello.world", []string{"hi", "heyho"})
-    fmt.Println(jsonObj.Get(jsonObj, "hello.world")) // []string{"hi", "heyho"}
+	// updating values
+	Set(jsonObj, ".hello.world.0", "heyho")
+	fmt.Println(Get[string](jsonObj, ".hello.world.0")) // heyho
+	Set(jsonObj, ".hello.world", []string{"hi", "heyho"})
+	fmt.Println(Get[string](jsonObj, ".hello.world")) // []string{"hi", "heyho"}
 
-    // compiling queries for faster access
-    helloWorldQuery, _ := libjson.Compile(jsonObj, "hello.world")
-    cachedQuery,  _ := helloWorldQuery()
-    fmt.Println(cachedQuery)
+	// compiling queries for faster access
+	helloWorldQuery, _ := Compile[[]any](jsonObj, ".hello.world")
+	cachedQuery, _ := helloWorldQuery()
+	fmt.Println(cachedQuery)
 }
 ```
 
