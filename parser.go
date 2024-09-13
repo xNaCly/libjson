@@ -14,10 +14,10 @@ type parser struct {
 func (p *parser) advance() error {
 	t, err := p.l.next()
 	p.t = t
-	if p.t.Type == t_eof && err == nil {
-		return nil
+	if p.t.Type == t_eof && err != nil {
+		return err
 	}
-	return err
+	return nil
 }
 
 func (p *parser) expect(t t_json) error {
