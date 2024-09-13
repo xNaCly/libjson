@@ -122,6 +122,7 @@ func TestLexerFail(t *testing.T) {
 		string([]byte{0x0C}),
 		`{"test": 'value'}`,
 		"🤣",
+		`{"a":"b"}/**/`,
 	}
 	for _, in := range input {
 		t.Run(in, func(t *testing.T) {

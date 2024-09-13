@@ -1,7 +1,9 @@
 package libjson
 
 import (
+	"bufio"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,4 +53,32 @@ func TestObjectReadme(t *testing.T) {
 	helloWorldQuery, _ := Compile[[]any](jsonObj, ".hello.world")
 	cachedQuery, _ := helloWorldQuery()
 	fmt.Println(cachedQuery)
+}
+
+func TestStandardFail(t *testing.T) {
+	input := []string{
+		"12300",
+		"-01",
+		"-2.",
+		"0.e1",
+		"2.e+3",
+		"2.e-3",
+		"2.e3",
+		"-012",
+		"-.123",
+		"1.",
+		"012",
+		`{"a":"b"}/**/`,
+		`{"a":"b"}/**//`,
+		`{"a":"b"}//`,
+		`{"a":"b"}/`,
+		`{"a":"b"}#`,
+	}
+	for _, i := range input {
+		t.Run(i, func(t *testing.T) {
+			p := parser{l: lexer{r: bufio.NewReader(strings.NewReader(i))}}
+			_, err := p.parse()
+			assert.Error(t, err)
+		})
+	}
 }

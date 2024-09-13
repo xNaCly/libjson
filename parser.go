@@ -14,7 +14,7 @@ type parser struct {
 func (p *parser) advance() error {
 	t, err := p.l.next()
 	p.t = t
-	if p.t.Type == t_eof {
+	if p.t.Type == t_eof && err == nil {
 		return nil
 	}
 	return err
@@ -143,23 +143,27 @@ func (p *parser) array() ([]any, error) {
 }
 
 func (p *parser) atom() (any, error) {
-	defer p.advance()
+	var r any
 	switch p.t.Type {
 	case t_string:
-		return *(*string)(unsafe.Pointer(&p.t.Val)), nil
+		r = *(*string)(unsafe.Pointer(&p.t.Val))
 	case t_number:
 		number, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&p.t.Val)), 64)
-		if err == nil {
-			return number, nil
+		if err != nil {
+			return empty, fmt.Errorf("Invalid floating point number %q: %w", p.t.Val, err)
 		}
-		return empty, fmt.Errorf("Invalid floating point number %q: %w", p.t.Val, err)
+		r = number
 	case t_true:
-		return true, nil
+		r = true
 	case t_false:
-		return false, nil
+		r = false
 	case t_null:
-		return nil, nil
+		r = nil
 	default:
 		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[p.t.Type])
 	}
+	if err := p.advance(); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
