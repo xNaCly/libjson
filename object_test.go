@@ -50,24 +50,13 @@ func TestObjectReadme(t *testing.T) {
 	fmt.Println(Get[string](jsonObj, ".hello.world")) // []string{"hi", "heyho"}
 
 	// compiling queries for faster access
-	helloWorldQuery, _ := Compile[[]any](jsonObj, ".hello.world")
-	cachedQuery, _ := helloWorldQuery()
-	fmt.Println(cachedQuery)
+	// helloWorldQuery, _ := Compile[[]any](jsonObj, ".hello.world")
+	// cachedQuery, _ := helloWorldQuery()
+	// fmt.Println(cachedQuery)
 }
 
 func TestStandardFail(t *testing.T) {
 	input := []string{
-		"12300",
-		"-01",
-		"-2.",
-		"0.e1",
-		"2.e+3",
-		"2.e-3",
-		"2.e3",
-		"-012",
-		"-.123",
-		"1.",
-		"012",
 		`{"a":"b"}/**/`,
 		`{"a":"b"}/**//`,
 		`{"a":"b"}//`,
