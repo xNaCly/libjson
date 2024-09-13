@@ -15,7 +15,7 @@ type lexer struct {
 func (l *lexer) next() (token, error) {
 	cc, err := l.r.ReadByte()
 	if err != nil {
-		return empty, io.EOF
+		return empty, nil
 	}
 
 	tt := t_eof
@@ -23,7 +23,7 @@ func (l *lexer) next() (token, error) {
 	for cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
 		cc, err = l.r.ReadByte()
 		if err != nil {
-			return empty, io.EOF
+			return empty, nil
 		}
 	}
 
@@ -132,11 +132,11 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 	toks := make([]token, 0, l.r.Size()/2)
 	for {
 		if tok, err := l.next(); err == nil {
-			toks = append(toks, tok)
-		} else {
-			if errors.Is(err, io.EOF) {
+			if tok.Type == t_eof {
 				break
 			}
+			toks = append(toks, tok)
+		} else {
 			return nil, err
 		}
 	}
