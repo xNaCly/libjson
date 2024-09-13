@@ -1,9 +1,7 @@
 package libjson
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +28,7 @@ func TestParserAtoms(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
+			p := &parser{l: lexer{data: []byte(in)}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			if !assert.EqualValues(t, wanted[i], out) {
@@ -55,7 +53,7 @@ func TestParserArray(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
+			p := &parser{l: lexer{data: []byte(in)}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -82,7 +80,7 @@ func TestParserObject(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
+			p := &parser{l: lexer{data: []byte(in)}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -109,7 +107,7 @@ func TestParserEdge(t *testing.T) {
 	}
 	for i, in := range input {
 		t.Run(in, func(t *testing.T) {
-			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
+			p := &parser{l: lexer{data: []byte(in)}}
 			out, err := p.parse()
 			assert.NoError(t, err)
 			assert.EqualValues(t, wanted[i], out)
@@ -143,7 +141,7 @@ func TestParserFail(t *testing.T) {
 	}
 	for _, in := range input {
 		t.Run(in, func(t *testing.T) {
-			p := &parser{l: lexer{r: bufio.NewReader(strings.NewReader(in))}}
+			p := &parser{l: lexer{data: []byte(in)}}
 			out, err := p.parse()
 			assert.Error(t, err)
 			assert.Nil(t, out)
