@@ -1,13 +1,15 @@
 package libjson
 
 import (
-	"bufio"
 	"io"
-	"strings"
 )
 
 func NewReader(r io.Reader) (*JSON, error) {
-	p := parser{l: lexer{r: bufio.NewReader(r)}}
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	p := parser{l: lexer{data: data}}
 	obj, err := p.parse()
 	if err != nil {
 		return nil, err
@@ -15,6 +17,11 @@ func NewReader(r io.Reader) (*JSON, error) {
 	return &JSON{obj}, nil
 }
 
-func New(s string) (*JSON, error) {
-	return NewReader(strings.NewReader(s))
+func New(data []byte) (*JSON, error) {
+	p := parser{l: lexer{data: data}}
+	obj, err := p.parse()
+	if err != nil {
+		return nil, err
+	}
+	return &JSON{obj}, nil
 }

@@ -65,6 +65,27 @@ the overall performance as well as the full results of
 
 | JSON size | `encoding/json` | `libjson` |
 | --------- | --------------- | --------- |
+| 1MB       | 12.4ms          | 12.0ms    |
+| 5MB       | 59.6ms          | 50ms      |
+| 10MB      | 115.0ms         | 96ms      |
+
+- use `[]byte` as source for lexer instead of `bufio.Reader`
+- thus use slicing into the original array instead of copying bytes for numbers
+  and strings
+- inline comparison for `null`, `false` and `true`, saves 3, 4 and 3
+  `lexer.advance` invocations, replaces them with direct byte slice access and
+  comparison
+
+This change allowed for the omission of memory allocations for every byte
+collected for number and string processing. Instead of doing so, this change
+enables the usage of sub slices of the original data and thus does not create
+new memory until the parser processes the string or number - resulting in 0.4ms
+faster execution for 1MB, 10ms for 5MB and 21ms for 10MB JSON inputs.
+
+### [a36a1bd](https://github.com/xNaCly/libjson/commit/a36a1bd042b10ce779c95c7c1e52232cf8d16fab)
+
+| JSON size | `encoding/json` | `libjson` |
+| --------- | --------------- | --------- |
 | 1MB       | 12.0ms          | 13.4ms    |
 | 5MB       | 58.4ms          | 66.3ms    |
 | 10MB      | 114.0ms         | 127.0ms   |

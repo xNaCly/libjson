@@ -1,9 +1,7 @@
 package libjson
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +23,7 @@ func TestObjectAtom(t *testing.T) {
 	}
 	for _, i := range input {
 		t.Run(i.inp+i.path, func(t *testing.T) {
-			obj, err := New(i.inp)
+			obj, err := New([]byte(i.inp))
 			assert.NoError(t, err)
 			assert.NotNil(t, obj)
 			out, err := obj.get(i.path)
@@ -38,7 +36,7 @@ func TestObjectAtom(t *testing.T) {
 // This tests the example in the readme, always copy from here to the readme
 func TestObjectReadme(t *testing.T) {
 	input := `{ "hello": {"world": ["hi"] } }`
-	jsonObj, _ := New(input) // or libjson.NewReader(r io.Reader)
+	jsonObj, _ := New([]byte(input)) // or libjson.NewReader(r io.Reader)
 
 	// accessing values
 	fmt.Println(Get[string](jsonObj, ".hello.world.0")) // hi
@@ -65,7 +63,7 @@ func TestStandardFail(t *testing.T) {
 	}
 	for _, i := range input {
 		t.Run(i, func(t *testing.T) {
-			p := parser{l: lexer{r: bufio.NewReader(strings.NewReader(i))}}
+			p := parser{l: lexer{data: []byte(i)}}
 			_, err := p.parse()
 			assert.Error(t, err)
 		})
