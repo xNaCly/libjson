@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -27,6 +28,7 @@ func main() {
 		file = os.Stdin
 	}
 	query := os.Args[len(os.Args)-1]
-	json := Must(libjson.NewReader(file))
-	fmt.Printf("%+#v\n", Must(libjson.Get[any](&json, query)))
+	deserialized := Must(libjson.NewReader(file))
+	queryResult := Must(libjson.Get[any](&deserialized, query))
+	fmt.Println(string(Must(json.MarshalIndent(queryResult, "", "\t"))))
 }

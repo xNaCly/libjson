@@ -11,6 +11,17 @@ type JSON struct {
 	obj any
 }
 
+func Compile(path string) (func(*JSON) (any, error), error) {
+	closure, err := parsePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(j *JSON) (any, error) {
+		return closure(j.obj)
+	}, nil
+}
+
 func Get[T any](obj *JSON, path string) (T, error) {
 	val, err := obj.get(path)
 	if err != nil {
