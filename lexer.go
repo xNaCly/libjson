@@ -11,29 +11,23 @@ type lexer struct {
 	pos  int
 }
 
-func (l *lexer) advance() (byte, error) {
-	if l.pos >= len(l.data) {
-		return 0, io.EOF
-	}
-	cc := l.data[l.pos]
-	l.pos++
-	return cc, nil
-}
-
 func (l *lexer) next() (token, error) {
-	cc, err := l.advance()
-	if err != nil {
+	for l.pos < len(l.data) {
+		cc := l.data[l.pos]
+		if cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
+			l.pos++
+		} else {
+			break
+		}
+	}
+
+	if l.pos >= len(l.data) {
 		return empty, nil
 	}
 
 	tt := t_eof
-
-	for cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
-		cc, err = l.advance()
-		if err != nil {
-			return empty, nil
-		}
-	}
+	cc := l.data[l.pos]
+	l.pos++
 
 	switch cc {
 	case '{':
@@ -50,18 +44,14 @@ func (l *lexer) next() (token, error) {
 		tt = t_colon
 	case '"':
 		start := l.pos
-		end := start
-		for {
-			cc, err = l.advance()
-			if cc == '"' {
-				end = l.pos - 1
-				break
-			} else if err != nil {
-				return empty, errors.New("Unterminated string detected")
+		for i := start; i < len(l.data); i++ {
+			if l.data[i] == '"' {
+				t := token{Type: t_string, Start: start, End: i}
+				l.pos = i + 1
+				return t, nil
 			}
 		}
-		t := token{Type: t_string, Start: start, End: end}
-		return t, nil
+		return empty, errors.New("Unterminated string")
 	case 't': // this should always be the 'true' atom and is therefore optimised here
 		if l.pos+3 > len(l.data) {
 			return empty, errors.New("Failed to read the expected 'true' atom")
@@ -92,22 +82,11 @@ func (l *lexer) next() (token, error) {
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
 			start := l.pos - 1
-			cc, err = l.advance()
-			if err != nil {
-				return token{Type: t_number, Start: start, End: l.pos}, nil
-			}
-
-			for {
-				if (cc >= '0' && cc <= '9') || cc == '-' || cc == '+' || cc == '.' || cc == 'e' || cc == 'E' {
-					cc, err = l.advance()
-					if err != nil {
-						break
-					}
+			for l.pos < len(l.data) {
+				c := l.data[l.pos]
+				if (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E' {
+					l.pos++
 				} else {
-					// the read at the start of the for loop iterates us too
-					// far, if we didnt break out of the loop but exited it
-					// according to its condition, thus we skip that here
-					l.pos--
 					break
 				}
 			}
