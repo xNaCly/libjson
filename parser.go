@@ -2,7 +2,6 @@ package libjson
 
 import (
 	"fmt"
-	"strconv"
 	"unsafe"
 )
 
@@ -169,11 +168,10 @@ func (p *parser) atom() (any, error) {
 		in := p.input[p.cur_tok.Start:p.cur_tok.End]
 		r = *(*string)(unsafe.Pointer(&in))
 	case t_number:
-		in := p.input[p.cur_tok.Start:p.cur_tok.End]
-		raw := *(*string)(unsafe.Pointer(&in))
-		number, err := strconv.ParseFloat(raw, 64)
+		raw := p.input[p.cur_tok.Start:p.cur_tok.End]
+		number, err := parseFloat(raw)
 		if err != nil {
-			return empty, fmt.Errorf("Invalid floating point number %q: %w", raw, err)
+			return empty, fmt.Errorf("Invalid floating point number %q: %w", string(raw), err)
 		}
 		r = number
 	case t_true:
