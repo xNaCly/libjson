@@ -49,7 +49,7 @@ func indexByKey(data any, key any) (any, error) {
 			return nil, nil
 		}
 		if k, ok := key.(int); !ok {
-			return nil, fmt.Errorf("Can not use %T::%v to index into %T::%v", key, key, data, data)
+			return nil, fmt.Errorf("Can not use %T(%v) to index into %T(%v)", key, key, data, data)
 		} else {
 			return v[k], nil
 		}
@@ -58,7 +58,7 @@ func indexByKey(data any, key any) (any, error) {
 			return nil, nil
 		}
 		if k, ok := key.(string); !ok {
-			return nil, fmt.Errorf("Can not use %T::%v to index into %T::%v", key, key, data, data)
+			return nil, fmt.Errorf("Can not use %T(%v) to index into %T(%v)", key, key, data, data)
 		} else {
 			return v[k], nil
 		}
