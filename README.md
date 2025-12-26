@@ -2,7 +2,7 @@
 
 > WARNING: libjson is currently a work in progress :)
 
-Fast and minimal JSON parser written in and for go
+Fast and minimal JSON parser written in and for Go with a JIT query language
 
 ```go
 package main
@@ -32,7 +32,7 @@ func main() {
   - uft8 support via go [rune](https://go.dev/blog/strings)
 - no reflection, uses a custom query language similar to JavaScript object access instead
 - generics for value insertion and extraction with `libjson.Get` and `libjson.Set`
-- caching of queries with `libjson.Compile`
+- caching of queries with `libjson.Compile`, just in time caching of queries
 - serialisation via `json.Marshal`
 
 ## Benchmarks

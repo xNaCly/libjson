@@ -11,6 +11,19 @@ type lexer struct {
 	pos  int
 }
 
+var numChar [256]bool
+
+func init() {
+	for c := byte('0'); c <= '9'; c++ {
+		numChar[c] = true
+	}
+	numChar['-'] = true
+	numChar['+'] = true
+	numChar['.'] = true
+	numChar['e'] = true
+	numChar['E'] = true
+}
+
 func (l *lexer) next() (token, error) {
 	for l.pos < len(l.data) {
 		cc := l.data[l.pos]
@@ -82,13 +95,8 @@ func (l *lexer) next() (token, error) {
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
 			start := l.pos - 1
-			for l.pos < len(l.data) {
-				c := l.data[l.pos]
-				if (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E' {
-					l.pos++
-				} else {
-					break
-				}
+			for l.pos < len(l.data) && numChar[l.data[l.pos]] {
+				l.pos++
 			}
 
 			return token{Type: t_number, Start: start, End: l.pos}, nil
