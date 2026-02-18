@@ -13,19 +13,18 @@ type token struct {
 var empty = token{Type: t_eof}
 
 const (
-	t_string         t_json = iota // anything between ""
-	t_string_escaped               // t_string but contains an escape char
-	t_number                       // floating point, hex, etc
-	t_true                         // true
-	t_false                        // false
-	t_null                         // null
-	t_left_curly                   // {
-	t_right_curly                  // }
-	t_left_braket                  // [
-	t_right_braket                 // ]
-	t_comma                        // ,
-	t_colon                        // :
-	t_eof                          // for any non structure characters outside of strings and numbers
+	t_string       t_json = iota // anything between ""
+	t_number                     // floating point, hex, etc
+	t_true                       // true
+	t_false                      // false
+	t_null                       // null
+	t_left_curly                 // {
+	t_right_curly                // }
+	t_left_braket                // [
+	t_right_braket               // ]
+	t_comma                      // ,
+	t_colon                      // :
+	t_eof                        // for any non structure characters outside of strings and numbers
 )
 
 var tokennames = map[t_json]string{
