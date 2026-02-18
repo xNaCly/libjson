@@ -1,7 +1,5 @@
 # libjson
 
-> WARNING: libjson is currently a work in progress :)
-
 Fast and minimal JSON parser written in and for Go with a JIT query language
 
 ```go
@@ -13,16 +11,16 @@ import (
 
 func main() {
 	input := `{ "hello": {"world": ["hi"] } }`
-	jsonObj, _ := New(input) // or libjson.NewReader(r io.Reader)
+	jsonObj, _ := libjson.New([]byte(input)) // or libjson.NewReader(r io.Reader)
 
 	// accessing values
-	fmt.Println(Get[string](jsonObj, ".hello.world.0")) // hi, nil
+	fmt.Println(libjson.Get[string](jsonObj, ".hello.world.0")) // hi, nil
 }
 ```
 
 ## Features
 
-- [ECMA 404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf)
+- [ECMA 404](https://ecma-international.org/publications-and-standards/standards/ecma-404/)
   and [rfc8259](https://www.rfc-editor.org/rfc/rfc8259) compliant
   - tests against [JSONTestSuite](https://github.com/nst/JSONTestSuite), see
     [Parsing JSON is a Minefield
