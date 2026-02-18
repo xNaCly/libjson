@@ -240,7 +240,7 @@ func unescapeInPlace(in []byte) (int, error) {
 
 			n := utf8.EncodeRune(in[curEnd:], r)
 			curEnd += n
-			i += 4
+			i += 3
 		}
 	}
 
