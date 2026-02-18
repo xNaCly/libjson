@@ -59,7 +59,7 @@ func main() {
 	if *useLibjson {
 		out := Must(libjson.NewReader(file))
 		if !*silent {
-			fmt.Printf("%+#v\n", Must(libjson.Get[any](&out, *query)))
+			fmt.Printf("%#+v\n", Must(libjson.Get[any](&out, *query)))
 		}
 	} else {
 		if *query != "." {
@@ -73,7 +73,7 @@ func main() {
 		}
 
 		if !*silent {
-			fmt.Printf("%+#v\n", a)
+			fmt.Printf("%#+v\n", a)
 		}
 	}
 }

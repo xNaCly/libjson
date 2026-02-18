@@ -58,10 +58,27 @@ func (l *lexer) next() (token, error) {
 	case '"':
 		start := l.pos
 		for i := start; i < len(l.data); i++ {
-			if l.data[i] == '"' {
+			switch l.data[i] {
+			case '"':
 				t := token{Type: t_string, Start: start, End: i}
 				l.pos = i + 1
 				return t, nil
+			case '\\': // OH NO ITS ESCAPING :O
+				i++
+				if i >= len(l.data) {
+					return empty, errors.New("Unterminated string escape")
+				}
+				switch l.data[i] {
+				case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
+					// we simply skip the escaped char, the parser has to
+				case 'u':
+					if i+4 > len(l.data) {
+						return empty, errors.New("Unterminated string")
+					}
+					i += 4
+				default:
+					return empty, fmt.Errorf("Invalid escape %q", l.data[i])
+				}
 			}
 		}
 		return empty, errors.New("Unterminated string")

@@ -1,7 +1,9 @@
 package libjson
 
 import (
+	"errors"
 	"fmt"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -161,17 +163,106 @@ func (p *parser) array() ([]any, error) {
 	return a, p.advance()
 }
 
+func hex4(b []byte) (r rune, err error) {
+	r = 0
+	for _, c := range b {
+		r <<= 4
+		switch {
+		case '0' <= c && c <= '9':
+			r += rune(c - '0')
+		case 'a' <= c && c <= 'f':
+			r += rune(c - 'a' + 10)
+		case 'A' <= c && c <= 'F':
+			r += rune(c - 'A' + 10)
+		default:
+			return 0, fmt.Errorf("invalid hex %q", c)
+		}
+	}
+	return r, nil
+}
+
+// unescapes escapes in a buffer, returns the end of the in place escaped
+// buffer so the caller can resize to the new, smaller buffer size
+func unescapeInPlace(in []byte) (int, error) {
+	curEnd := 0
+	for i := 0; i < len(in); i++ {
+		b := in[i]
+		if b != '\\' {
+			in[curEnd] = b
+			curEnd++
+			continue
+		}
+
+		i++ // skip \
+
+		switch in[i] {
+		case '"', '\\', '/':
+			in[curEnd] = in[i]
+			curEnd++
+		case 'b':
+			in[curEnd] = '\b'
+			curEnd++
+		case 'f':
+			in[curEnd] = '\f'
+			curEnd++
+		case 'n':
+			in[curEnd] = '\n'
+			curEnd++
+		case 'r':
+			in[curEnd] = '\r'
+			curEnd++
+		case 't':
+			in[curEnd] = '\t'
+			curEnd++
+		case 'u': // \uXXXX
+
+			// From ECMA-404:
+			//
+			// However, whether a processor of JSON texts interprets such a surrogate pair
+			// as a single code point or as an explicit surrogate pair is a semantic
+			// decision that is determined by the specific processor.
+			//
+			// meaning we dont merge unicode points, firstly because fuck
+			// utf16, and secondly because its simpler to just keep two unicode
+			// points separate compared to increasing the complexity of this
+			// decoding
+
+			i++ // skip u
+
+			if i+4 > len(in) {
+				return 0, errors.New("unterminated unicode escape")
+			}
+
+			r, err := hex4(in[i : i+4])
+			if err != nil {
+				return 0, err
+			}
+
+			n := utf8.EncodeRune(in[curEnd:], r)
+			curEnd += n
+			i += 4
+		}
+	}
+
+	return curEnd, nil
+}
+
 func (p *parser) atom() (any, error) {
 	var r any
 	switch p.cur_tok.Type {
 	case t_string:
 		in := p.input[p.cur_tok.Start:p.cur_tok.End]
+		end, err := unescapeInPlace(in)
+		if err != nil {
+			return nil, err
+		}
+		in = in[:end]
 		r = *(*string)(unsafe.Pointer(&in))
 	case t_number:
 		raw := p.input[p.cur_tok.Start:p.cur_tok.End]
 		number, err := parseFloat(raw)
 		if err != nil {
-			return empty, fmt.Errorf("Invalid floating point number %q: %w", string(raw), err)
+			return nil, fmt.Errorf("Invalid floating point number %q: %w", string(raw), err)
 		}
 		r = number
 	case t_true:
