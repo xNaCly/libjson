@@ -8,7 +8,28 @@ import (
 )
 
 type JSON struct {
-	obj any
+	inner any
+}
+
+// takes a JSON.inner value and converts it to Go, for instance merges the obj
+// fields into a map
+func toGo(json any) any {
+	switch v := json.(type) {
+	case obj:
+		m := make(map[string]any, len(v.Fields))
+		for _, f := range v.Fields {
+			m[f.Key] = toGo(f.Value)
+		}
+		return m
+	case []any:
+		arr := make([]any, len(v))
+		for i, el := range v {
+			arr[i] = toGo(el)
+		}
+		return arr
+	default:
+		return v
+	}
 }
 
 func Get[T any](obj *JSON, path string) (T, error) {
@@ -17,6 +38,15 @@ func Get[T any](obj *JSON, path string) (T, error) {
 		var e T
 		return e, err
 	}
+
+	// normalise inner json representation into something Go can deal with
+	val = toGo(val)
+
+	if val == nil {
+		var e T
+		return e, nil
+	}
+
 	if castVal, ok := val.(T); !ok {
 		var e T
 		return e, fmt.Errorf("Expected value of type %T, got type %T", e, val)
@@ -42,14 +72,22 @@ func indexByKey(data any, key any) (any, error) {
 		} else {
 			return v[k], nil
 		}
-	case map[string]any:
-		if len(v) == 0 {
+	case obj:
+		if len(v.Fields) == 0 {
 			return nil, nil
 		}
+
 		if k, ok := key.(string); !ok {
 			return nil, fmt.Errorf("Can not use %T::%v to index into %T::%v", key, key, data, data)
 		} else {
-			return v[k], nil
+			i := 0
+			for ; i < len(v.Fields); i++ {
+				cur := v.Fields[i]
+				if cur.Key == k {
+					return cur.Value, nil
+				}
+			}
+			return nil, nil
 		}
 	default:
 		return nil, fmt.Errorf("Unsupported %T, can not index", data)
@@ -107,9 +145,9 @@ func (j *JSON) get(path string) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %q", errors.ErrUnsupported, path)
 	}
-	return f(j.obj)
+	return f(j.inner)
 }
 
 func (j *JSON) MarshalJSON() ([]byte, error) {
-	return json.Marshal(j.obj)
+	return json.Marshal(toGo(j.inner))
 }
