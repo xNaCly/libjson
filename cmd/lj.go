@@ -26,6 +26,7 @@ func main() {
 	usePprof := flag.Bool("pprof", false, "use pprof cpu tracing")
 	query := flag.String("q", ".", "query the parsed json")
 	silent := flag.Bool("s", false, "no stdoutput")
+	escape := flag.Bool("e", false, "escapes input with Gos '%#+v'")
 	flag.Parse()
 
 	if *noGc {
@@ -59,7 +60,12 @@ func main() {
 	if *useLibjson {
 		out := Must(libjson.NewReader(file))
 		if !*silent {
-			fmt.Printf("%#+v\n", Must(libjson.Get[any](&out, *query)))
+			out := Must(libjson.Get[any](&out, *query))
+			if *escape {
+				fmt.Printf("%#+v\n", out)
+			} else {
+				fmt.Println(out)
+			}
 		}
 	} else {
 		if *query != "." {
@@ -67,13 +73,17 @@ func main() {
 		}
 
 		decoder := json.NewDecoder(file)
-		var a any
-		if err := decoder.Decode(&a); err != nil {
+		var out any
+		if err := decoder.Decode(&out); err != nil {
 			panic(err)
 		}
 
 		if !*silent {
-			fmt.Printf("%#+v\n", a)
+			if *escape {
+				fmt.Printf("%#+v\n", out)
+			} else {
+				fmt.Println(out)
+			}
 		}
 	}
 }

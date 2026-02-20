@@ -9,6 +9,7 @@ import (
 type lexer struct {
 	data []byte
 	pos  int
+	len  int
 }
 
 var numChar [256]bool
@@ -25,7 +26,7 @@ func init() {
 }
 
 func (l *lexer) next() (token, error) {
-	for l.pos < len(l.data) {
+	for l.pos < l.len {
 		cc := l.data[l.pos]
 		if cc == ' ' || cc == '\n' || cc == '\t' || cc == '\r' {
 			l.pos++
@@ -34,7 +35,7 @@ func (l *lexer) next() (token, error) {
 		}
 	}
 
-	if l.pos >= len(l.data) {
+	if l.pos >= l.len {
 		return empty, nil
 	}
 
@@ -57,22 +58,25 @@ func (l *lexer) next() (token, error) {
 		tt = t_colon
 	case '"':
 		start := l.pos
-		for i := start; i < len(l.data); i++ {
-			switch l.data[i] {
-			case '"':
+		for i := start; i < l.len; i++ {
+			if c := l.data[i]; c == '"' {
 				t := token{Type: t_string, Start: start, End: i}
+				// if hasEscaped {
+				// 	t.Type = t_string_escaped
+				// }
 				l.pos = i + 1
 				return t, nil
-			case '\\': // OH NO ITS ESCAPING :O
+			} else if c == '\\' { // OH NO ITS ESCAPING :O
 				i++
-				if i >= len(l.data) {
+				if i >= l.len {
 					return empty, errors.New("Unterminated string escape")
 				}
+
 				switch l.data[i] {
 				case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
 					// we simply skip the escaped char, the parser has to
 				case 'u':
-					if i+4 > len(l.data) {
+					if i+4 > l.len {
 						return empty, errors.New("Unterminated string")
 					}
 					i += 4
@@ -83,7 +87,7 @@ func (l *lexer) next() (token, error) {
 		}
 		return empty, errors.New("Unterminated string")
 	case 't': // this should always be the 'true' atom and is therefore optimised here
-		if l.pos+3 > len(l.data) {
+		if l.pos+3 > l.len {
 			return empty, errors.New("Failed to read the expected 'true' atom")
 		}
 		if !(l.data[l.pos] == 'r' && l.data[l.pos+1] == 'u' && l.data[l.pos+2] == 'e') {
@@ -92,7 +96,7 @@ func (l *lexer) next() (token, error) {
 		l.pos += 3
 		tt = t_true
 	case 'f': // this should always be the 'false' atom and is therefore optimised here
-		if l.pos+4 > len(l.data) {
+		if l.pos+4 > l.len {
 			return empty, errors.New("Failed to read the expected 'false' atom")
 		}
 		if !(l.data[l.pos] == 'a' && l.data[l.pos+1] == 'l' && l.data[l.pos+2] == 's' && l.data[l.pos+3] == 'e') {
@@ -101,7 +105,7 @@ func (l *lexer) next() (token, error) {
 		l.pos += 4
 		tt = t_false
 	case 'n': // this should always be the 'null' atom and is therefore optimised here
-		if l.pos+3 > len(l.data) {
+		if l.pos+3 > l.len {
 			return empty, errors.New("Failed to read the expected 'null' atom")
 		}
 		if !(l.data[l.pos] == 'u' && l.data[l.pos+1] == 'l' && l.data[l.pos+2] == 'l') {
@@ -112,7 +116,7 @@ func (l *lexer) next() (token, error) {
 	default:
 		if cc == '-' || (cc >= '0' && cc <= '9') {
 			start := l.pos - 1
-			for l.pos < len(l.data) && numChar[l.data[l.pos]] {
+			for l.pos < l.len && numChar[l.data[l.pos]] {
 				l.pos++
 			}
 
@@ -132,6 +136,7 @@ func (l *lexer) lex(r io.Reader) ([]token, error) {
 	if err != nil {
 		return nil, err
 	}
+	l.len = len(l.data)
 
 	toks := make([]token, 0, len(l.data)/2)
 	for {

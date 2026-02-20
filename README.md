@@ -20,6 +20,7 @@ func main() {
 
 ## Features
 
+- Parser consumes and mutates the input to make most operations zero copy and zero alloc
 - [ECMA 404](https://ecma-international.org/publications-and-standards/standards/ecma-404/)
   and [rfc8259](https://www.rfc-editor.org/rfc/rfc8259) compliant
   - tests against [JSONTestSuite](https://github.com/nst/JSONTestSuite), see
@@ -32,6 +33,15 @@ func main() {
 - generics for value insertion and extraction with `libjson.Get` and `libjson.Set`
 - caching of queries with `libjson.Compile`, just in time caching of queries
 - serialisation via `json.Marshal`
+
+## Why is it faster than encoding/json?
+
+- zero-copy strings
+- mutate input for string escaping instead of allocating a new one
+- no allocations for strings, views into the original input
+- no reflection
+- no copies for map keys
+- very simple lexer and parser
 
 ## Benchmarks
 
