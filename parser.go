@@ -59,7 +59,7 @@ func (p *parser) object() (map[string]any, error) {
 		return nil, err
 	}
 
-	m := make(map[string]any, 4)
+	m := make(map[string]any)
 
 	if p.cur_tok.Type == t_right_curly {
 		err := p.advance()
@@ -137,7 +137,7 @@ func (p *parser) array() ([]any, error) {
 		return []any{}, p.advance()
 	}
 
-	a := make([]any, 0, 8)
+	a := make([]any, 0)
 
 	for p.cur_tok.Type != t_eof && p.cur_tok.Type != t_right_braket {
 		if len(a) > 0 {
