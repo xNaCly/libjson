@@ -61,9 +61,6 @@ func (l *lexer) next() (token, error) {
 		for i := start; i < l.len; i++ {
 			if c := l.data[i]; c == '"' {
 				t := token{Type: t_string, Start: start, End: i}
-				// if hasEscaped {
-				// 	t.Type = t_string_escaped
-				// }
 				l.pos = i + 1
 				return t, nil
 			} else if c == '\\' { // OH NO ITS ESCAPING :O

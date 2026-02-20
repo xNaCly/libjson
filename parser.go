@@ -181,8 +181,13 @@ func hex4(b []byte) (r rune, err error) {
 	return r, nil
 }
 
-// unescapes escapes in a buffer, returns the end of the in place escaped
-// buffer so the caller can resize to the new, smaller buffer size
+// unescapes JSON escapes in a buffer into their non-JSON representation
+//
+// Returns the end of the in place escaped buffer so the caller can resize to
+// the new, smaller buffer size
+//
+// The implementation may look weird, but is optimised to have the least
+// possible branches
 func unescapeInPlace(in []byte) (int, error) {
 	curEnd := 0
 	for i := 0; i < len(in); i++ {
@@ -193,11 +198,16 @@ func unescapeInPlace(in []byte) (int, error) {
 			continue
 		}
 
+		// check if there’s at least 1 more byte for the escape
+		if i+1 >= len(in) {
+			return 0, errors.New("unterminated escape")
+		}
 		i++ // skip \
+		b = in[i]
 
-		switch in[i] {
+		switch b {
 		case '"', '\\', '/':
-			in[curEnd] = in[i]
+			in[curEnd] = b
 			curEnd++
 		case 'b':
 			in[curEnd] = '\b'
@@ -227,21 +237,18 @@ func unescapeInPlace(in []byte) (int, error) {
 			// points separate compared to increasing the complexity of this
 			// decoding
 
-			i++ // skip u
-
-			if i+4 > len(in) {
+			if i+4 >= len(in) {
 				return 0, errors.New("unterminated unicode escape")
 			}
 
-			r, err := hex4(in[i : i+4])
+			r, err := hex4(in[i+1 : i+5])
 			if err != nil {
 				return 0, err
 			}
-
 			n := utf8.EncodeRune(in[curEnd:], r)
 			curEnd += n
-			i += 3
-		}
+			i += 4
+		} // we dont need a default case since we check all possible escapes in the lexer
 	}
 
 	return curEnd, nil
