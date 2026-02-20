@@ -12,26 +12,34 @@ const amount = 50_000
 const naiveInput = `{"key1":"value","array":[],"obj":{},"atomArray":[11201,1e112,true,false,null,"str"]},`
 const escapedInput = `{"text":"line1\nline2\nline3","quote":"\"hello\"","path":"C:\\\\Users\\\\name","unicode":"\u0041\u0042\u0043","mix":"abc\\ndef\"ghi\u263A"},`
 const hardInput = `{
-	"id":12345,
-	"name":"very_long_string_with_no_escapes_but_large_payload_abcdefghijklmnopqrstuvwxyz_0123456789",
-	"description":"This string contains\nmultiple\nlines\nand \"quotes\" and unicode \u2764\u2764\u2764",
-	"nested":{
-		"level1":{
-			"level2":{
-				"array":[
-					"short",
-					"string_with_escape\\n",
-					"another\\tvalue",
-					"unicode\u2603",
-					1234567890,
-					-1.2345e67,
-					true,
-					false,
-					null
-				]
-			}
-		}
-	}
+  "id": 12345,
+  "name": "very_long_string_with_escapes_and_unicode_abcdefghijklmnopqrstuvwxyz_0123456789",
+  "description": "This string contains\nmultiple\nlines\nand \"quotes\" and unicode \u2764\u2764\u2764",
+  "nested": {
+    "level1": {
+      "level2": {
+        "level3": {
+          "level4": {
+            "array": [
+              "short",
+              "string_with_escape\\n",
+              "another\\tvalue",
+              "unicode\u2603",
+              "escaped_quote_\"_and_backslash_\\",
+              1234567890,
+              -1.2345e67,
+              3.141592653589793,
+              true,
+              false,
+              null,
+              "ABC\u00a9\u20ac",
+              "mix\\n\\t\\r\\\\\\\"end"
+            ]
+          }
+        }
+      }
+    }
+  }
 },`
 
 func benchmarkWithInput(b *testing.B, input string) {
