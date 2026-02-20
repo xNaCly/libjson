@@ -3,6 +3,7 @@ package libjson
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"unicode/utf8"
 	"unsafe"
 )
@@ -59,15 +60,15 @@ func (p *parser) object() (map[string]any, error) {
 		return nil, err
 	}
 
-	m := make(map[string]any)
-
 	if p.cur_tok.Type == t_right_curly {
 		err := p.advance()
 		if err != nil {
 			return nil, err
 		}
-		return m, nil
+		return make(map[string]any, 0), nil
 	}
+
+	m := make(map[string]any, 8)
 
 	for p.cur_tok.Type != t_eof && p.cur_tok.Type != t_right_curly {
 		if len(m) > 0 {
@@ -137,7 +138,7 @@ func (p *parser) array() ([]any, error) {
 		return []any{}, p.advance()
 	}
 
-	a := make([]any, 0)
+	a := make([]any, 0, 8)
 
 	for p.cur_tok.Type != t_eof && p.cur_tok.Type != t_right_braket {
 		if len(a) > 0 {
@@ -251,7 +252,7 @@ func (p *parser) atom() (any, error) {
 		r = *(*string)(unsafe.Pointer(&in))
 	case t_number:
 		raw := p.input[p.cur_tok.Start:p.cur_tok.End]
-		number, err := parseFloat(raw)
+		number, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&raw)), 64)
 		if err != nil {
 			return nil, fmt.Errorf("Invalid floating point number %q: %w", string(raw), err)
 		}
