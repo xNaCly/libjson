@@ -163,23 +163,7 @@ func (p *parser) array() ([]any, error) {
 	return a, p.advance()
 }
 
-func hex4(b []byte) (r rune, err error) {
-	r = 0
-	for _, c := range b {
-		r <<= 4
-		switch {
-		case '0' <= c && c <= '9':
-			r += rune(c - '0')
-		case 'a' <= c && c <= 'f':
-			r += rune(c - 'a' + 10)
-		case 'A' <= c && c <= 'F':
-			r += rune(c - 'A' + 10)
-		default:
-			return 0, fmt.Errorf("invalid hex %q", c)
-		}
-	}
-	return r, nil
-}
+var badEscapeErr = errors.New("bad escape")
 
 // unescapes JSON escapes in a buffer into their non-JSON representation
 //
@@ -200,7 +184,7 @@ func unescapeInPlace(in []byte) (int, error) {
 
 		// check if there’s at least 1 more byte for the escape
 		if i+1 >= len(in) {
-			return 0, errors.New("unterminated escape")
+			return 0, badEscapeErr
 		}
 		i++ // skip \
 		b = in[i]
@@ -238,7 +222,7 @@ func unescapeInPlace(in []byte) (int, error) {
 			// decoding
 
 			if i+4 >= len(in) {
-				return 0, errors.New("unterminated unicode escape")
+				return 0, badEscapeErr
 			}
 
 			r, err := hex4(in[i+1 : i+5])
