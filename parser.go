@@ -51,75 +51,78 @@ func (p *parser) expression() (any, error) {
 	}
 }
 
-type field struct {
-	Key   string
-	Value any
-}
-
-type obj struct {
-	Fields []field
-}
-
-var emptyObj = obj{}
-
-func (p *parser) object() (obj, error) {
+func (p *parser) object() (map[string]any, error) {
 	if p.cur_tok.Type != t_left_curly {
-		return emptyObj, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_left_curly])
+		return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_left_curly])
 	}
 	err := p.advance()
 	if err != nil {
-		return emptyObj, err
+		return nil, err
 	}
 
 	if p.cur_tok.Type == t_right_curly {
-		return emptyObj, p.advance()
+		err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		return make(map[string]any, 0), nil
 	}
 
-	m := obj{
-		Fields: make([]field, 0, 8),
-	}
+	m := make(map[string]any, 8)
 
 	for p.cur_tok.Type != t_eof && p.cur_tok.Type != t_right_curly {
-		if len(m.Fields) > 0 {
+		if len(m) > 0 {
 			if p.cur_tok.Type != t_comma {
-				return emptyObj, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_comma])
+				return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_comma])
 			}
 			err := p.advance()
 			if err != nil {
-				return emptyObj, err
+				return nil, err
 			}
 		}
 
 		if p.cur_tok.Type != t_string {
-			return emptyObj, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_string])
+			return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_string])
 		}
 		in := p.input[p.cur_tok.Start:p.cur_tok.End]
 		key := *(*string)(unsafe.Pointer(&in))
 		err := p.advance()
 		if err != nil {
-			return emptyObj, err
+			return nil, err
 		}
 
 		if p.cur_tok.Type != t_colon {
-			return emptyObj, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_colon])
+			return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_colon])
 		}
 		err = p.advance()
 		if err != nil {
-			return emptyObj, err
+			return nil, err
 		}
 
 		val, err := p.expression()
 		if err != nil {
-			return emptyObj, err
+			return nil, err
 		}
 
-		m.Fields = append(m.Fields, field{key, val})
+		// TODO:  think about activating a uniqueness check for object keys,
+		// would add an other hashing and a branch for each object key parsed.
+		//
+		// if _, ok := m[key]; ok {
+		// 	return nil, fmt.Errorf("Key %q is already set in this object", key)
+		// }
+
+		m[key] = val
 	}
 
 	if p.cur_tok.Type != t_right_curly {
-		return emptyObj, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_right_curly])
+		return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_right_curly])
 	}
-	return m, p.advance()
+	err = p.advance()
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func (p *parser) array() ([]any, error) {

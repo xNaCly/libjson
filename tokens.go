@@ -1,7 +1,7 @@
 package libjson
 
 // json type
-type t_json int8
+type t_json int32
 
 type token struct {
 	Type t_json
