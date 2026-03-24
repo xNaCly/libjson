@@ -21,6 +21,7 @@ func main() {
 ## Features
 
 - Parser consumes and mutates the input to make most operations zero copy and zero alloc
+- Full materialisation, no type access helpers or other weird overhead 
 - [ECMA 404](https://ecma-international.org/publications-and-standards/standards/ecma-404/)
   and [rfc8259](https://www.rfc-editor.org/rfc/rfc8259) compliant
   - tests against [JSONTestSuite](https://github.com/nst/JSONTestSuite), see
@@ -29,7 +30,7 @@ func main() {
   - no trailing commata, comments, `Nan` or `Infinity`
   - top level atom/skalars, like strings, numbers, true, false and null
   - uft8 support via go [rune](https://go.dev/blog/strings)
-- no reflection, uses a custom query language similar to JavaScript object access instead
+- no reflection, uses a custom query language similar to JavaScript object access instead, or simply use the go values as is
 - generics for value insertion and extraction with `libjson.Get` and `libjson.Set`
 - caching of queries with `libjson.Compile`, just in time caching of queries
 - serialisation via `json.Marshal`
@@ -37,7 +38,7 @@ func main() {
 ## Why is it faster than encoding/json?
 
 - zero-copy strings
-- mutate input for string escaping instead of allocating a new one
+- mutate input for string escaping instead of allocating
 - no allocations for strings, views into the original input
 - no reflection
 - no copies for map keys
@@ -45,149 +46,57 @@ func main() {
 
 ## Benchmarks
 
-![libjson-vs-encodingjson](https://github.com/user-attachments/assets/b11bcce4-e7db-4c45-ab42-45a2042e2a51)
+### Go internal 
 
+| Benchmark             | ns/op       | B/op        | allocs/op | speedup | alloc reduction |
+| --------------------- | ----------- | ----------- | --------- | ------- | --------------- |
+| libjson Naive         | 46,294,122  | 34,907,845  | 500,023   | 1.85x   | 2.10x fewer     |
+| encoding/json Naive   | 85,502,921  | 42,744,522  | 1,050,031 | -       | -               |
+| libjson Escaped       | 38,199,760  | 25,394,245  | 350,023   | 2.32x   | 3.14x fewer     |
+| encoding/json Escaped | 88,478,499  | 37,544,406  | 1,100,030 | -       | -               |
+| libjson Hard          | 154,178,081 | 139,915,859 | 1,400,023 | 2.52x   | 2.14x fewer     |
+| encoding/json Hard    | 388,198,395 | 173,944,514 | 3,000,032 | -       | -               |
 
-These results were generated with the following specs:
+Run via
 
-```text
-OS: Arch Linux x86_64
-Kernel: 6.10.4-arch2-1
-Memory: 32024MiB
-Go version: 1.23
+```shell
+go test -bench=. -benchmem
 ```
 
-Below this section is a list of performance improvements and their impact on
-the overall performance as well as the full results of
-[test/bench.sh](test/bench.sh).
+Results in:
 
-### [b23001e](https://github.com/xNaCly/libjson/commit/b23001eca470935976a36cfbbc7a3c773d784a03)
+```text
+goos: linux
+goarch: amd64
+pkg: github.com/xnacly/libjson
+cpu: AMD Ryzen 7 3700X 8-Core Processor
+BenchmarkLibJson_Naive-16                     26          46294122 ns/op        34907845 B/op     500023 allocs/op
+BenchmarkLibJson_Escaped-16                   28          38199760 ns/op        25394245 B/op     350023 allocs/op
+BenchmarkLibJson_Hard-16                       7         154178081 ns/op        139915859 B/op   1400023 allocs/op
+BenchmarkEncodingJson_Naive-16                13          85502921 ns/op        42744522 B/op    1050031 allocs/op
+BenchmarkEncodingJson_Escaped-16              12          88478499 ns/op        37544406 B/op    1100030 allocs/op
+BenchmarkEncodingJson_Hard-16                  3         388198395 ns/op        173944514 B/op   3000032 allocs/op
+PASS
+ok      github.com/xnacly/libjson       8.510s
+```
 
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 24.2ms          | 11.5ms    |
-| 5MB       | 117.3ms         | 48.5ms    |
-| 10MB      | 225ms           | 91ms      |
+### HUGE inputs
 
-- manually inlined `parser::expect`
-
-### [0058abb](https://github.com/xNaCly/libjson/commit/0058abb7381735b27783f9809947d7e0f22d9b05)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 24.2ms          | 12.0ms    |
-| 5MB       | 117.3ms         | 49.8ms    |
-| 10MB      | 225ms           | 93.8ms    |
-
-- replaced byte slices with offsets and lengths in the `token` struct
-
-### [88c5eb9](https://github.com/xNaCly/libjson/commit/88c5eb91c4fb1586af29b2cab3563b6ade424323)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 25.2ms          | 12.0ms    |
-| 5MB       | 117.3ms         | 50ms      |
-| 10MB      | 227ms           | 96ms      |
-
-This commit made the tests more comparably by actually unmarshalling json into
-a go data structure.
-
-### [a36a1bd](https://github.com/xNaCly/libjson/commit/a36a1bd042b10ce779c95c7c1e52232cf8d16fab)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 12.0ms          | 13.4ms    |
-| 5MB       | 58.4ms          | 66.3ms    |
-| 10MB      | 114.0ms         | 127.0ms   |
-
-- switch `token.Val` from `string` to `[]byte`, allows zero values to be `nil` and not `""`
-- move string allocation for `t_string` and `t_number` to `(*parser).atom()`
-
-### [58e19ff](https://github.com/xNaCly/libjson/commit/58e19ffa140b01ff873505cb500364c4fea566db)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 12.3ms          | 14.2ms    |
-| 5MB       | 59.6ms          | 68.8ms    |
-| 10MB      | 115.3ms         | 131.8ms   |
-
-The changes below resulted in the following savings: \~6ms for 1MB, \~25ms for
-5MB and \~60ms for 10MB.
-
-- reuse buffer `lexer.buf` for number and string processing
-- switch from `(*bufio.Reader).ReadRune()` to `(*bufio.Reader).ReadByte()`
-- used `*(*string)(unsafe.Pointer(&l.buf))` to skip strings.Builder usage for
-  number and string processing
-- remove and inline buffer usage for null, true and false, skipping allocations
-- benchmark the optimal initial cap for `lexer.buf`, maps and arrays to be 8
-- remove `errors.Is` and check for `t_eof` instead
-- move number parsing to `(*parser).atom()` and change type of `token.Val` to string,
-  this saves a lot of assertions, etc
-
-### [58d9360](https://github.com/xNaCly/libjson/commit/58d9360bae0576e761e021ee52035713206fdab1)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 12.2ms          | 19.9ms    |
-| 5MB       | 60.2ms          | 95.2ms    |
-| 10MB      | 117.2ms         | 183.8ms   |
-
-I had to change some things to account for issues occuring in the reading of
-atoms, such as true, false and null. All of those are read by buffering the
-size of chars they have and reading this buffer at once, instead of iterating
-and multiple reads. This did not work correctly because i used
-`(*bufio.Reader).Read`, which sometimes does not read all bytes fitting in the
-buffer passed into it. Thats why these commit introduces a lot of performance
-regressions.
-
-### [e08beba](https://github.com/xNaCly/libjson/commit/e08bebada39441d9b6a20cb05251488ddce68285)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 11.7ms          | 13.1ms    |
-| 5MB       | 55.2ms          | 64.8ms    |
-
-The optimisation in this commit is to no longer tokenize the whole input before
-starting the parser but attaching the lexer to the parser. This allows the
-parser to invoke the tokenization of the next token on demand, for instance
-once the parser needs to advance. This reduces the runtime around 4ms for the
-1MB input and 14ms for 5MB, resulting in a 1.33x and a 1.22x runtime reduction,
-pretty good for such a simple change.
-
-### [be686d2](https://github.com/xNaCly/libjson/commit/be686d2c85c07cdfa91295052db54001d8cd5cc8)
-
-| JSON size | `encoding/json` | `libjson` |
-| --------- | --------------- | --------- |
-| 1MB       | 11.7ms          | 17.4ms    |
-| 5MB       | 55.2ms          | 78.5ms    |
-
-For the first naiive implementation, these results are fairly good and not too
-far behind the `encoding/go` implementation, however there are some potential
-low hanging fruit for performance improvements and I will invest some time into
-them.
-
-No specific optimisations made here, except removing the check for duplicate
-object keys, because
-[rfc8259](https://www.rfc-editor.org/rfc/rfc8259) says:
-
-> When the names within an object are not
-> unique, the behavior of software that receives such an object is
-> unpredictable. Many implementations report the last name/value pair only.
-> Other implementations report an error or fail to parse the object, and some
-> implementations report all of the name/value pairs, including duplicates.
-
-Thus I can decide wheter or not I want to error on duplicate keys, or simply
-let each duplicate key overwrite the previous value in the object, however
-checking if a given key is already in the map/object requires that key to be
-hashed and the map to be indexed with that key, omitting this check saves us
-these operations, thus making the parser faster for large objects.
-
-### Reproduce locally
+| Input size | library       | time    | faster |
+| ----- | ------------- | ------- | ------ |
+| 1MB   | libjson       | 8.7ms   | 1.73x  |
+|       | encoding/json | 15.0ms  |        |
+| 5MB   | libjson       | 33.2ms  | 1.99x  |
+|       | encoding/json | 66.3ms |        |
+| 10MB  | libjson       | 64.4ms  | 2.04x  |
+|       | encoding/json | 131.6ms |        |
+| 100MB  | libjson       | 618.2ms  | 2.06x  |
+|       | encoding/json | 1273ms |        |
 
 > Make sure you have the go toolchain and python3 installed for this.
 
 ```shell
-cd test/
+cd benchmarks/
 chmod +x ./bench.sh
 ./bench.sh
 ```
@@ -195,28 +104,50 @@ chmod +x ./bench.sh
 Output looks something like:
 
 ```text
-fetching example data
+generating example data
 building executable
-Benchmark 1: ./test ./1MB.json
-  Time (mean ± σ):      13.1 ms ±   0.2 ms    [User: 12.1 ms, System: 2.8 ms]
-  Range (min … max):    12.7 ms …  13.8 ms    210 runs
+Benchmark 1: ./test -s ./1MB.json
+  Time (mean ± σ):       8.6 ms ±   0.2 ms    [User: 10.1 ms, System: 2.8 ms]
+  Range (min … max):     8.3 ms …   8.8 ms    10 runs
 
-Benchmark 2: ./test -libjson=false ./1MB.json
-  Time (mean ± σ):      11.7 ms ±   0.3 ms    [User: 9.5 ms, System: 2.1 ms]
-  Range (min … max):    11.1 ms …  12.7 ms    237 runs
-
-Summary
-  ./test -libjson=false ./1MB.json ran
-    1.12 ± 0.03 times faster than ./test ./1MB.json
-Benchmark 1: ./test ./5MB.json
-  Time (mean ± σ):      64.2 ms ±   0.9 ms    [User: 79.3 ms, System: 13.1 ms]
-  Range (min … max):    62.6 ms …  67.0 ms    46 runs
-
-Benchmark 2: ./test -libjson=false ./5MB.json
-  Time (mean ± σ):      55.2 ms ±   1.1 ms    [User: 51.3 ms, System: 6.3 ms]
-  Range (min … max):    53.6 ms …  58.0 ms    53 runs
+Benchmark 2: ./test -s -libjson=false ./1MB.json
+  Time (mean ± σ):      15.1 ms ±   0.3 ms    [User: 15.6 ms, System: 3.2 ms]
+  Range (min … max):    14.7 ms …  15.6 ms    10 runs
 
 Summary
-  ./test -libjson=false ./5MB.json ran
-    1.16 ± 0.03 times faster than ./test ./5MB.json
+  ./test -s ./1MB.json ran
+    1.76 ± 0.05 times faster than ./test -s -libjson=false ./1MB.json
+Benchmark 1: ./test -s ./5MB.json
+  Time (mean ± σ):      33.6 ms ±   0.8 ms    [User: 40.4 ms, System: 10.1 ms]
+  Range (min … max):    32.5 ms …  34.9 ms    10 runs
+
+Benchmark 2: ./test -s -libjson=false ./5MB.json
+  Time (mean ± σ):      66.2 ms ±   0.7 ms    [User: 66.5 ms, System: 9.4 ms]
+  Range (min … max):    65.3 ms …  67.7 ms    10 runs
+
+Summary
+  ./test -s ./5MB.json ran
+    1.97 ± 0.05 times faster than ./test -s -libjson=false ./5MB.json
+Benchmark 1: ./test -s ./10MB.json
+  Time (mean ± σ):      64.3 ms ±   1.4 ms    [User: 83.6 ms, System: 12.4 ms]
+  Range (min … max):    62.9 ms …  67.5 ms    10 runs
+
+Benchmark 2: ./test -s -libjson=false ./10MB.json
+  Time (mean ± σ):     132.4 ms ±   1.4 ms    [User: 169.4 ms, System: 11.7 ms]
+  Range (min … max):   130.7 ms … 135.3 ms    10 runs
+
+Summary
+  ./test -s ./10MB.json ran
+    2.06 ± 0.05 times faster than ./test -s -libjson=false ./10MB.json
+Benchmark 1: ./test -s ./100MB.json
+  Time (mean ± σ):     613.2 ms ±   2.9 ms    [User: 803.8 ms, System: 65.6 ms]
+  Range (min … max):   609.0 ms … 618.7 ms    10 runs
+
+Benchmark 2: ./test -s -libjson=false ./100MB.json
+  Time (mean ± σ):      1.276 s ±  0.012 s    [User: 1.522 s, System: 0.072 s]
+  Range (min … max):    1.262 s …  1.299 s    10 runs
+
+Summary
+  ./test -s ./100MB.json ran
+    2.08 ± 0.02 times faster than ./test -s -libjson=false ./100MB.json
 ```
