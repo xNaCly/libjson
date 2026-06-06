@@ -26,7 +26,7 @@ func newJSON(data []byte, cleanup func() error) (JSON, error) {
 	if err != nil {
 		return JSON{}, err
 	}
-	return JSON{obj: obj, cleanup: cleanup}, nil
+	return JSON{obj: obj, arena: p.arena, cleanup: cleanup}, nil
 }
 
 // FromFile is the same as New but zero copy via mmap

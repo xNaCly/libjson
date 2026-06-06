@@ -29,7 +29,7 @@ func TestObjectAtom(t *testing.T) {
 			assert.NotNil(t, obj)
 			out, err := obj.get(i.path)
 			assert.NoError(t, err)
-			assert.EqualValues(t, i.expected, out)
+			assert.EqualValues(t, i.expected, out.Interface())
 		})
 	}
 }

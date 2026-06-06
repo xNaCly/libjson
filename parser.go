@@ -3,7 +3,6 @@ package libjson
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"unicode/utf8"
 	"unsafe"
 )
@@ -12,6 +11,7 @@ type parser struct {
 	l       lexer
 	cur_tok token
 	input   []byte
+	arena   valueArena
 }
 
 func (p *parser) advance() error {
@@ -23,25 +23,24 @@ func (p *parser) advance() error {
 	return nil
 }
 
-// parses toks into a valid json representation, thus the return type can be
-// either map[string]any, []any, string, nil, false, true or a number
-func (p *parser) parse(input []byte) (any, error) {
+// parses toks into a valid json representation
+func (p *parser) parse(input []byte) (JSONVal, error) {
 	p.input = input
 	err := p.advance()
 	if err != nil {
-		return nil, err
+		return JSONVal{}, err
 	}
 	if val, err := p.expression(); err != nil {
-		return nil, err
+		return JSONVal{}, err
 	} else {
 		if p.cur_tok.Type != t_eof {
-			return nil, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data", tokennames[p.cur_tok.Type])
+			return JSONVal{}, fmt.Errorf("Unexpected non-whitespace character(s) (%s) after JSON data", tokennames[p.cur_tok.Type])
 		}
 		return val, nil
 	}
 }
 
-func (p *parser) expression() (any, error) {
+func (p *parser) expression() (JSONVal, error) {
 	if p.cur_tok.Type == t_left_curly {
 		return p.object()
 	} else if p.cur_tok.Type == t_left_braket {
@@ -51,57 +50,57 @@ func (p *parser) expression() (any, error) {
 	}
 }
 
-func (p *parser) object() (map[string]any, error) {
+func (p *parser) object() (JSONVal, error) {
 	if p.cur_tok.Type != t_left_curly {
-		return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_left_curly])
+		return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_left_curly])
 	}
 	err := p.advance()
 	if err != nil {
-		return nil, err
+		return JSONVal{}, err
 	}
 
 	if p.cur_tok.Type == t_right_curly {
 		err := p.advance()
 		if err != nil {
-			return nil, err
+			return JSONVal{}, err
 		}
-		return make(map[string]any, 0), nil
+		return p.arena.NewObjectVal(make(map[string]JSONVal, 0)), nil
 	}
 
-	m := make(map[string]any, 8)
+	m := make(map[string]JSONVal, 8)
 
 	for p.cur_tok.Type != t_eof && p.cur_tok.Type != t_right_curly {
 		if len(m) > 0 {
 			if p.cur_tok.Type != t_comma {
-				return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_comma])
+				return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_comma])
 			}
 			err := p.advance()
 			if err != nil {
-				return nil, err
+				return JSONVal{}, err
 			}
 		}
 
 		if p.cur_tok.Type != t_string {
-			return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_string])
+			return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_string])
 		}
 		in := p.input[p.cur_tok.Start:p.cur_tok.End]
 		key := *(*string)(unsafe.Pointer(&in))
 		err := p.advance()
 		if err != nil {
-			return nil, err
+			return JSONVal{}, err
 		}
 
 		if p.cur_tok.Type != t_colon {
-			return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_colon])
+			return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_colon])
 		}
 		err = p.advance()
 		if err != nil {
-			return nil, err
+			return JSONVal{}, err
 		}
 
 		val, err := p.expression()
 		if err != nil {
-			return nil, err
+			return JSONVal{}, err
 		}
 
 		// TODO:  think about activating a uniqueness check for object keys,
@@ -115,53 +114,53 @@ func (p *parser) object() (map[string]any, error) {
 	}
 
 	if p.cur_tok.Type != t_right_curly {
-		return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_right_curly])
+		return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_right_curly])
 	}
 	err = p.advance()
 	if err != nil {
-		return nil, err
+		return JSONVal{}, err
 	}
 
-	return m, nil
+	return p.arena.NewObjectVal(m), nil
 }
 
-func (p *parser) array() ([]any, error) {
+func (p *parser) array() (JSONVal, error) {
 	if p.cur_tok.Type != t_left_braket {
-		return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_left_braket])
+		return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_left_braket])
 	}
 	err := p.advance()
 	if err != nil {
-		return nil, err
+		return JSONVal{}, err
 	}
 
 	if p.cur_tok.Type == t_right_braket {
-		return []any{}, p.advance()
+		return p.arena.NewArrayVal([]JSONVal{}), p.advance()
 	}
 
-	a := make([]any, 0, 8)
+	a := make([]JSONVal, 0, 8)
 
 	for p.cur_tok.Type != t_eof && p.cur_tok.Type != t_right_braket {
 		if len(a) > 0 {
 			if p.cur_tok.Type != t_comma {
-				return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_comma])
+				return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_comma])
 			}
 			err := p.advance()
 			if err != nil {
-				return nil, err
+				return JSONVal{}, err
 			}
 		}
 		node, err := p.expression()
 		if err != nil {
-			return nil, err
+			return JSONVal{}, err
 		}
 		a = append(a, node)
 	}
 
 	if p.cur_tok.Type != t_right_braket {
-		return nil, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_right_braket])
+		return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected %q", tokennames[p.cur_tok.Type], tokennames[t_right_braket])
 	}
 
-	return a, p.advance()
+	return p.arena.NewArrayVal(a), p.advance()
 }
 
 var badEscapeErr = errors.New("bad escape")
@@ -239,35 +238,35 @@ func unescapeInPlace(in []byte) (int, error) {
 	return curEnd, nil
 }
 
-func (p *parser) atom() (any, error) {
-	var r any
+func (p *parser) atom() (JSONVal, error) {
+	var r JSONVal
 	switch p.cur_tok.Type {
 	case t_string:
 		in := p.input[p.cur_tok.Start:p.cur_tok.End]
 		end, err := unescapeInPlace(in)
 		if err != nil {
-			return nil, err
+			return JSONVal{}, err
 		}
 		in = in[:end]
-		r = *(*string)(unsafe.Pointer(&in))
+		r = p.arena.NewStringVal(*(*string)(unsafe.Pointer(&in)))
 	case t_number:
 		raw := p.input[p.cur_tok.Start:p.cur_tok.End]
-		number, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&raw)), 64)
+		number, err := parseFloat(raw)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid floating point number %q: %w", string(raw), err)
+			return JSONVal{}, fmt.Errorf("Invalid floating point number %q: %w", string(raw), err)
 		}
-		r = number
+		r = NewNumberVal(number)
 	case t_true:
-		r = true
+		r = NewBoolVal(true)
 	case t_false:
-		r = false
+		r = NewBoolVal(false)
 	case t_null:
-		r = nil
+		r = NewNullVal()
 	default:
-		return nil, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[p.cur_tok.Type])
+		return JSONVal{}, fmt.Errorf("Unexpected %q at this position, expected any of: string, number, true, false or null", tokennames[p.cur_tok.Type])
 	}
 	if err := p.advance(); err != nil {
-		return nil, err
+		return JSONVal{}, err
 	}
 	return r, nil
 }

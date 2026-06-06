@@ -1,14 +1,14 @@
 package libjson
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 )
 
 type JSON struct {
-	obj     any
+	obj     JSONVal
+	arena   valueArena
 	cleanup func() error
 }
 
@@ -18,53 +18,57 @@ func Get[T any](obj *JSON, path string) (T, error) {
 		var e T
 		return e, err
 	}
-	if castVal, ok := val.(T); !ok {
+	if castVal, ok := val.Interface().(T); !ok {
 		var e T
-		return e, fmt.Errorf("Expected value of type %T, got type %T", e, val)
+		return e, fmt.Errorf("Expected value of type %T, got json kind %v", e, val.Kind())
 	} else {
 		return castVal, nil
 	}
 }
 
-func indexByKey(data any, key any) (any, error) {
-	switch v := data.(type) {
-	case nil:
-		return nil, errors.New("Can not index into null")
-	case string:
-		return nil, errors.New("Can not index into string")
-	case float64:
-		return nil, errors.New("Can not index into number")
-	case []any:
-		if len(v) == 0 {
-			return nil, nil
+func indexByKey(data JSONVal, key any) (JSONVal, error) {
+	switch data.Kind() {
+	case JSONNull:
+		return JSONVal{}, errors.New("Can not index into null")
+	case JSONString:
+		return JSONVal{}, errors.New("Can not index into string")
+	case JSONNumber:
+		return JSONVal{}, errors.New("Can not index into number")
+	case JSONBool:
+		return JSONVal{}, errors.New("Can not index into bool")
+	case JSONArray:
+		arr := data.Array()
+		if len(arr) == 0 {
+			return JSONVal{}, nil
 		}
 		if k, ok := key.(int); !ok {
-			return nil, fmt.Errorf("Can not use %T::%v to index into %T::%v", key, key, data, data)
+			return JSONVal{}, fmt.Errorf("Can not use %T::%v to index into json array", key, key)
 		} else {
-			return v[k], nil
+			return arr[k], nil
 		}
-	case map[string]any:
-		if len(v) == 0 {
-			return nil, nil
+	case JSONObject:
+		obj := data.Object()
+		if len(obj) == 0 {
+			return JSONVal{}, nil
 		}
 		if k, ok := key.(string); !ok {
-			return nil, fmt.Errorf("Can not use %T::%v to index into %T::%v", key, key, data, data)
+			return JSONVal{}, fmt.Errorf("Can not use %T::%v to index into json object", key, key)
 		} else {
-			return v[k], nil
+			return obj[k], nil
 		}
 	default:
-		return nil, fmt.Errorf("Unsupported %T, can not index", data)
+		return JSONVal{}, fmt.Errorf("Unsupported json kind %v, can not index", data.Kind())
 	}
 }
 
-func parsePath(path string) (func(any) (any, error), error) {
+func parsePath(path string) (func(JSONVal) (JSONVal, error), error) {
 	if len(path) == 0 {
 		return nil, errors.New("Unexpected index syntax, top level element is available via '.'")
 	}
 
 	// fast paths for '.' path / parent access
 	if len(path) == 1 && path[0] == '.' {
-		return func(a any) (any, error) {
+		return func(a JSONVal) (JSONVal, error) {
 			return a, nil
 		}, nil
 	}
@@ -83,7 +87,7 @@ func parsePath(path string) (func(any) (any, error), error) {
 		}
 	}
 
-	return func(a any) (any, error) {
+	return func(a JSONVal) (JSONVal, error) {
 		val := a
 		for _, k := range keys {
 			key := k.(string)
@@ -94,7 +98,7 @@ func parsePath(path string) (func(any) (any, error), error) {
 			}
 
 			if v, err := indexByKey(val, k); err != nil {
-				return nil, err
+				return JSONVal{}, err
 			} else {
 				val = v
 			}
@@ -103,16 +107,16 @@ func parsePath(path string) (func(any) (any, error), error) {
 	}, nil
 }
 
-func (j *JSON) get(path string) (any, error) {
+func (j *JSON) get(path string) (JSONVal, error) {
 	f, err := parsePath(path)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %q", errors.ErrUnsupported, path)
+		return JSONVal{}, fmt.Errorf("%w: %q", errors.ErrUnsupported, path)
 	}
 	return f(j.obj)
 }
 
 func (j *JSON) MarshalJSON() ([]byte, error) {
-	return json.Marshal(j.obj)
+	return j.obj.MarshalJSON()
 }
 
 func (j *JSON) Close() error {
