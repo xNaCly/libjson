@@ -8,7 +8,8 @@ import (
 )
 
 type JSON struct {
-	obj any
+	obj     any
+	cleanup func() error
 }
 
 func Get[T any](obj *JSON, path string) (T, error) {
@@ -112,4 +113,13 @@ func (j *JSON) get(path string) (any, error) {
 
 func (j *JSON) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j.obj)
+}
+
+func (j *JSON) Close() error {
+	if j.cleanup == nil {
+		return nil
+	}
+	cleanup := j.cleanup
+	j.cleanup = nil
+	return cleanup()
 }

@@ -1,9 +1,11 @@
 package libjson
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestObjectAtom(t *testing.T) {
@@ -60,4 +62,39 @@ func TestStandardFail(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+func TestFromFile(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "libjson-*.json")
+	require.NoError(t, err)
+	_, err = f.WriteString(`{ "hello": {"world": ["hi"] } }`)
+	require.NoError(t, err)
+	_, err = f.Seek(0, 0)
+	require.NoError(t, err)
+
+	obj, err := FromFile(f)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, obj.Close())
+		assert.NoError(t, f.Close())
+	})
+
+	val, err := Get[string](&obj, ".hello.world.0")
+	assert.NoError(t, err)
+	assert.EqualValues(t, "hi", val)
+}
+
+func TestJSONCloseIdempotent(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "libjson-*.json")
+	require.NoError(t, err)
+	_, err = f.WriteString(`{"key":"value"}`)
+	require.NoError(t, err)
+	_, err = f.Seek(0, 0)
+	require.NoError(t, err)
+
+	obj, err := FromFile(f)
+	require.NoError(t, err)
+	assert.NoError(t, obj.Close())
+	assert.NoError(t, obj.Close())
+	assert.NoError(t, f.Close())
 }

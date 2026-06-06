@@ -1,7 +1,9 @@
 package libjson
 
 import (
+	"bytes"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -71,6 +73,43 @@ func benchmarkEncodingJsonWithInput(b *testing.B, input string) {
 	b.ReportAllocs()
 }
 
+func benchmarkNewReaderWithInput(b *testing.B, input string) {
+	data := strings.Repeat(input, amount)
+	d := []byte("[" + data[:len(data)-1] + "]")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := NewReader(bytes.NewReader(d))
+		assert.NoError(b, err)
+	}
+	b.ReportAllocs()
+}
+
+func benchmarkFromFileWithInput(b *testing.B, input string) {
+	data := strings.Repeat(input, amount)
+	d := []byte("[" + data[:len(data)-1] + "]")
+
+	f, err := os.CreateTemp(b.TempDir(), "libjson-bench-*.json")
+	assert.NoError(b, err)
+	_, err = f.Write(d)
+	assert.NoError(b, err)
+	_, err = f.Seek(0, 0)
+	assert.NoError(b, err)
+	b.Cleanup(func() {
+		assert.NoError(b, f.Close())
+	})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := f.Seek(0, 0)
+		assert.NoError(b, err)
+		doc, err := FromFile(f)
+		assert.NoError(b, err)
+		assert.NoError(b, doc.Close())
+	}
+	b.ReportAllocs()
+}
+
 func BenchmarkLibJson_Naive(b *testing.B) {
 	benchmarkWithInput(b, naiveInput)
 }
@@ -81,6 +120,14 @@ func BenchmarkLibJson_Escaped(b *testing.B) {
 
 func BenchmarkLibJson_Hard(b *testing.B) {
 	benchmarkWithInput(b, hardInput)
+}
+
+func BenchmarkLibJson_NewReader_Hard(b *testing.B) {
+	benchmarkNewReaderWithInput(b, hardInput)
+}
+
+func BenchmarkLibJson_FromFile_Hard(b *testing.B) {
+	benchmarkFromFileWithInput(b, hardInput)
 }
 
 func BenchmarkEncodingJson_Naive(b *testing.B) {

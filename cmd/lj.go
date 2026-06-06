@@ -58,7 +58,17 @@ func main() {
 	}
 
 	if *useLibjson {
-		out := Must(libjson.NewReader(file))
+		var out libjson.JSON
+		if file != os.Stdin {
+			out = Must(libjson.FromFile(file))
+			defer func() {
+				if err := out.Close(); err != nil {
+					log.Printf("failed to close mapped json input: %v", err)
+				}
+			}()
+		} else {
+			out = Must(libjson.NewReader(file))
+		}
 		if !*silent {
 			out := Must(libjson.Get[any](&out, *query))
 			if *escape {
